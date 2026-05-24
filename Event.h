@@ -14,6 +14,13 @@ class Fiber;
 
 class Event {
 public:
+  explicit Event() = default;
+
+  Event(Event&) = delete;
+  Event& operator=(Event&) = delete;
+  Event(Event&&) = delete;
+  Event& operator=(Event&&) = delete;
+
   OMNIFIBER_API bool IsSet() { return _IsSet; }
   OMNIFIBER_API void Reset() { _IsSet = false; }
 
