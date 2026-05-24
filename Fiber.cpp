@@ -4,7 +4,7 @@
 #include <cassert>
 
 #include "Event.h"
-#include "ManagerDeclare.h"
+#include "Manager.h"
 
 namespace Omni {
 namespace Fiber {

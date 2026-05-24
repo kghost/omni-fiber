@@ -1,4 +1,4 @@
-#include "ManagerDeclare.h"
+#include "Manager.h"
 
 #include <boost/format.hpp>
 #include <boost/log/attributes/constant.hpp>
@@ -47,7 +47,7 @@ void Manager::Run() {
 
 void Manager::DumpAllFibers() { _RootFiber->DumpAllFibers(Log, 0); }
 
-void Manager::OnFiberFinished(std::shared_ptr<Fiber> fiber) {
+void Manager::OnFiberFinished(std::shared_ptr<Fiber> _) {
   BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << "All Fiber Finished.";
 }
 

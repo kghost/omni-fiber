@@ -28,12 +28,14 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
 private:
   class FiberFrame {
   public:
-    class Promise {
+    class Promise final {
     public:
       Promise(Fiber& fiber, auto&) : _Fiber(fiber) {}
 
-      Promise(Promise&&) = delete;
       Promise(const Promise&) = delete;
+      Promise& operator=(const Promise&) = delete;
+      Promise(Promise&&) = delete;
+      Promise& operator=(Promise&&) = delete;
 
       auto initial_suspend() const noexcept {
         class Awaitor {
@@ -54,7 +56,7 @@ private:
         public:
           Awaitor(Fiber& owner) : _Fiber(owner) {}
           constexpr bool await_ready() const noexcept { return false; }
-          void await_suspend(std::coroutine_handle<> caller) const noexcept { _Fiber.Finishing(); }
+          void await_suspend(std::coroutine_handle<> _) const noexcept { _Fiber.Finishing(); }
           constexpr void await_resume() const noexcept {}
 
         private:
@@ -120,7 +122,7 @@ private:
 
   class ChildFiberFinishNotifier : public FiberFinishNotifier {
   public:
-    ChildFiberFinishNotifier(Fiber& fiber) : _Parent(fiber) {}
+    ChildFiberFinishNotifier(Fiber& parent) : _Parent(parent) {}
     ~ChildFiberFinishNotifier() override {}
     void OnFiberFinished(std::shared_ptr<Fiber> fiber) override { _Parent._ChildSignals.Push(fiber); }
 
@@ -129,7 +131,7 @@ private:
   };
 
   // owner is used by FiberFrame::Promise constructor
-  template <typename CoroutineFunction> static FiberFrame SpawnFiber(Fiber& owner, CoroutineFunction function) {
+  template <typename CoroutineFunction> static FiberFrame SpawnFiber(Fiber& _, CoroutineFunction function) {
     co_await function();
   }
 
@@ -165,8 +167,8 @@ private:
   // Reture state
   std::optional<std::exception_ptr> _Exception;
 
-  FiberFrame _OutMostFrame; // This field must initialized later than _Continuation, becasue _Continuation is wroten
-                            // when initializing Frame
+  // This field must initialized later than _Continuation, becasue _Continuation is wroten when initializing Frame
+  FiberFrame _OutMostFrame;
   EventQueue<std::shared_ptr<Fiber>> _ChildSignals;
   std::set<std::shared_ptr<Fiber>> _Children;
 };

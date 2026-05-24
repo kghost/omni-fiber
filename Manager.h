@@ -11,6 +11,7 @@
 #include "Coroutine.h"
 #include "EventQueue.h"
 #include "Executor.h"
+#include "Fiber.h"
 #include "FiberFinishNotifier.h"
 
 #include "shared.h"
@@ -41,7 +42,11 @@ public:
   // Spawn the root fiber
   template <typename CoroutineFunction>
     requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
-  std::shared_ptr<Fiber> SpawnRoot(std::string&& name, CoroutineFunction&& function);
+  std::shared_ptr<Fiber> SpawnRoot(std::string&& name, CoroutineFunction&& function) {
+    _RootFiber.reset(new Fiber(*this, std::move(name), *this, std::forward<CoroutineFunction>(function)));
+    _RootFiber->Schedule();
+    return _RootFiber;
+  }
 
   class Runner {
   public:

@@ -7,7 +7,7 @@ project(omnifiber
 )
 
 # Standard C++20 is required for coroutines
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -33,7 +33,7 @@ if(WIN32)
 endif()
 
 # Define the library
-add_library(omnifiber SHARED ${SOURCES})
+add_library(omnifiber STATIC ${SOURCES})
 
 # Include directories
 target_include_directories(omnifiber
@@ -93,8 +93,6 @@ install(FILES
   FiberAwaitable.h
   FiberFinishNotifier.h
   Manager.h
-  ManagerDeclare.h
-  ManagerDefine.h
   shared.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omnifiber
 )
@@ -104,3 +102,8 @@ install(EXPORT omnifiberTargets
   NAMESPACE omnifiber::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/omnifiber
 )
+
+add_subdirectory(tests)
+add_subdirectory(tools)
+
+

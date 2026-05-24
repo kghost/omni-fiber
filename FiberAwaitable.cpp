@@ -1,7 +1,7 @@
 #include "FiberAwaitable.h"
 
 #include "Fiber.h"
-#include "ManagerDeclare.h"
+#include "Manager.h"
 
 namespace Omni {
 namespace Fiber {
