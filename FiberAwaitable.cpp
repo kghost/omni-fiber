@@ -1,5 +1,3 @@
-#include "../common/header.h"
-
 #include "FiberAwaitable.h"
 
 #include "Fiber.h"

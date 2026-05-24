@@ -1,5 +1,3 @@
-#include "../common/header.h"
-
 #include "Event.h"
 
 #include "Fiber.h"

@@ -292,3 +292,4 @@ Makefile.in
 /.vscode
 *.swp
 /tags
+/build/

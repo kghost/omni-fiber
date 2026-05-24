@@ -1,5 +1,3 @@
-#include "../common/header.h"
-
 #include "Fiber.h"
 
 #include <boost/describe/enum_to_string.hpp>
