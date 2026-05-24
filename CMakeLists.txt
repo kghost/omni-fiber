@@ -6,6 +6,8 @@ project(omnifiber
   LANGUAGES CXX
 )
 
+option(OMNIFIBER_INTERNAL "Build omni-fiber as an internal static library" OFF)
+
 # Standard C++20 is required for coroutines
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -74,36 +76,36 @@ else()
 endif()
 
 # Installation (optional but good practice)
-include(GNUInstallDirs)
-install(TARGETS omnifiber
-  EXPORT omnifiberTargets
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+if(NOT OMNIFIBER_INTERNAL)
+  include(GNUInstallDirs)
+  install(TARGETS omnifiber
+    EXPORT omnifiberTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  )
 
-install(FILES
-  Asio.h
-  Coroutine.h
-  Event.h
-  EventQueue.h
-  Executor.h
-  Fiber.h
-  FiberAwaitable.h
-  FiberFinishNotifier.h
-  Manager.h
-  shared.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omnifiber
-)
+  install(FILES
+    Asio.h
+    Coroutine.h
+    Event.h
+    EventQueue.h
+    Executor.h
+    Fiber.h
+    FiberAwaitable.h
+    FiberFinishNotifier.h
+    Manager.h
+    shared.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omnifiber
+  )
 
-install(EXPORT omnifiberTargets
-  FILE omnifiberConfig.cmake
-  NAMESPACE omnifiber::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/omnifiber
-)
+  install(EXPORT omnifiberTargets
+    FILE omnifiberConfig.cmake
+    NAMESPACE omnifiber::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/omnifiber
+  )
+endif()
 
 add_subdirectory(tests)
 add_subdirectory(tools)
-
-
