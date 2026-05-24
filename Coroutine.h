@@ -5,7 +5,6 @@
 #include <exception>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <type_traits>
 
 namespace Omni {
@@ -15,9 +14,14 @@ template <typename RetType> class Coroutine {
 private:
   class ReturnState {
   public:
-    void FinishWithValue() noexcept requires std::is_void_v<RetType> { _RetValue = true; }
-    template <typename RetType = RetType>
-    requires !std::is_void_v<RetType> void FinishWithValue(RetType && ret) noexcept {
+    void FinishWithValue() noexcept
+      requires std::is_void_v<RetType>
+    {
+      _RetValue = true;
+    }
+    template <typename T = RetType>
+      requires(!std::is_void_v<T>)
+    void FinishWithValue(T&& ret) noexcept {
       _RetValue.emplace(std::move(ret));
     }
     void FinishWithException(std::exception_ptr eptr) noexcept { _Exception = eptr; }
@@ -26,12 +30,14 @@ private:
 
     RetType Continue() {
       assert(IsFinished());
-      if (_Exception != nullptr)
+      if (_Exception != nullptr) {
         std::rethrow_exception(_Exception);
-      if constexpr (std::is_void_v<RetType>)
+      }
+      if constexpr (std::is_void_v<RetType>) {
         return;
-      else
+      } else {
         return std::move(_RetValue.value());
+      }
     }
 
     bool HasWaiter() const noexcept { return _Continuation.has_value(); }
@@ -41,10 +47,11 @@ private:
   private:
     std::optional<std::coroutine_handle<>> _Continuation;
     std::conditional_t<std::is_void_v<RetType>, bool, std::optional<RetType>> _RetValue = ([] {
-      if constexpr (std::is_void_v<RetType>)
+      if constexpr (std::is_void_v<RetType>) {
         return false;
-      else
+      } else {
         return std::optional<RetType>();
+      }
     })();
     std::exception_ptr _Exception;
   };
@@ -58,18 +65,19 @@ public:
       // coroutine state. The Coroutine inside the Corotine::Awaitor object controls when the Coroutine is destroyed.
       class FinalAwaiter {
       public:
-        FinalAwaiter(ReturnState &ret) : _ReturnState(ret) {}
+        FinalAwaiter(ReturnState& ret) : _ReturnState(ret) {}
 
         bool await_ready() const noexcept { return false; }
         void await_suspend(std::coroutine_handle<>) const noexcept {
           // If the Coroutine is ever suspended, resume upper frame, otherwise return the control to upper frame.
-          if (_ReturnState.HasWaiter())
+          if (_ReturnState.HasWaiter()) {
             _ReturnState.ResumeWaiter();
+          }
         }
         void await_resume() const noexcept {}
 
       private:
-        ReturnState &_ReturnState;
+        ReturnState& _ReturnState;
       };
 
       return FinalAwaiter(*_ReturnState);
@@ -100,7 +108,7 @@ public:
       return coroutine;
     }
 
-    void return_value(RetType &&ret) { PromiseBase::_ReturnState->FinishWithValue(std::move(ret)); }
+    void return_value(RetType&& ret) { PromiseBase::_ReturnState->FinishWithValue(std::move(ret)); }
   };
 
   using promise_type = std::conditional<std::is_void_v<RetType>, PromiseVoid, PromiseNonVoid>::type;
@@ -116,7 +124,7 @@ public:
   // The lifespan of coroutine state of the callee is bound to _Callee.
   class Awaitable {
   public:
-    Awaitable(Coroutine &&callee) : _Callee(std::move(callee)) {}
+    Awaitable(Coroutine&& callee) : _Callee(std::move(callee)) {}
 
     bool await_ready() const noexcept { return _Callee._RetState->IsFinished(); }
     void await_suspend(std::coroutine_handle<> caller) noexcept { _Callee._RetState->SetWaiter(caller); }
@@ -128,19 +136,20 @@ public:
 
   auto operator co_await() { return Awaitable(std::move(*this)); }
 
-  Coroutine(const Coroutine &) = delete;
-  Coroutine &operator=(const Coroutine &) = delete;
+  Coroutine(const Coroutine&) = delete;
+  Coroutine& operator=(const Coroutine&) = delete;
 
-  Coroutine(Coroutine &&that)
+  Coroutine(Coroutine&& that)
       : _RetState(std::move(that._RetState)), _CoroutineState(std::move(that._CoroutineState.value())) {
     that._CoroutineState.reset();
   }
-  Coroutine &operator=(Coroutine &&) = delete;
+  Coroutine& operator=(Coroutine&&) = delete;
 
   ~Coroutine() {
     assert(!_RetState || _RetState->IsFinished()); // If hits, you probably forget to co_await a Coroutine.
-    if (_CoroutineState.has_value())
+    if (_CoroutineState.has_value()) {
       _CoroutineState.value().destroy();
+    }
   }
 
 private:

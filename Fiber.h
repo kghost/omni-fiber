@@ -5,7 +5,6 @@
 #include <exception>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <set>
 #include <stdexcept>
 #include <type_traits>
@@ -31,21 +30,21 @@ private:
   public:
     class Promise {
     public:
-      Promise(Fiber &fiber, auto &) : _Fiber(fiber) {}
+      Promise(Fiber& fiber, auto&) : _Fiber(fiber) {}
 
-      Promise(Promise &&) = delete;
-      Promise(const Promise &) = delete;
+      Promise(Promise&&) = delete;
+      Promise(const Promise&) = delete;
 
       auto initial_suspend() const noexcept {
         class Awaitor {
         public:
-          Awaitor(Fiber &owner) : _Fiber(owner) {}
+          Awaitor(Fiber& owner) : _Fiber(owner) {}
           constexpr bool await_ready() const noexcept { return false; }
           void await_suspend(std::coroutine_handle<> caller) const noexcept { _Fiber.StartingYield(caller); }
           constexpr void await_resume() const noexcept {}
 
         private:
-          Fiber &_Fiber;
+          Fiber& _Fiber;
         };
         return Awaitor(_Fiber);
       }
@@ -53,13 +52,13 @@ private:
       auto final_suspend() const noexcept {
         class Awaitor {
         public:
-          Awaitor(Fiber &owner) : _Fiber(owner) {}
+          Awaitor(Fiber& owner) : _Fiber(owner) {}
           constexpr bool await_ready() const noexcept { return false; }
           void await_suspend(std::coroutine_handle<> caller) const noexcept { _Fiber.Finishing(); }
           constexpr void await_resume() const noexcept {}
 
         private:
-          Fiber &_Fiber;
+          Fiber& _Fiber;
         };
         return Awaitor(_Fiber);
       }
@@ -69,17 +68,17 @@ private:
       void return_void() {}
 
     private:
-      Fiber &_Fiber;
+      Fiber& _Fiber;
     };
 
     using promise_type = Promise;
 
     void operator co_await() = delete;
 
-    FiberFrame(const FiberFrame &) = delete;
-    FiberFrame &operator=(const FiberFrame &) = delete;
-    FiberFrame(FiberFrame &&that) = delete;
-    FiberFrame &operator=(FiberFrame &&) = delete;
+    FiberFrame(const FiberFrame&) = delete;
+    FiberFrame& operator=(const FiberFrame&) = delete;
+    FiberFrame(FiberFrame&& that) = delete;
+    FiberFrame& operator=(FiberFrame&&) = delete;
 
     ~FiberFrame() { _CoroutineState.destroy(); }
 
@@ -90,8 +89,8 @@ private:
 
 public:
   template <typename CoroutineFunction>
-  requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction> std::shared_ptr<Fiber>
-  Spawn(std::string &&name, CoroutineFunction &&function) {
+    requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
+  std::shared_ptr<Fiber> Spawn(std::string&& name, CoroutineFunction&& function) {
     auto child = std::shared_ptr<Fiber>(
         new Fiber(_Manager, std::move(name), _ChildFiberFinishNotifier, std::forward<CoroutineFunction>(function)));
     _Children.insert(child);
@@ -112,33 +111,38 @@ public:
     FiberInterrupted() : std::runtime_error("Fiber Interrupted.") {}
   };
 
-  void DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level> &logger, int indent);
+  void DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent);
 
 private:
   friend class Manager;
   friend class FiberAwaitable;
-  friend boost::log::formatting_ostream &operator<<(boost::log::formatting_ostream &p, Fiber &fiber);
+  friend boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);
 
   class ChildFiberFinishNotifier : public FiberFinishNotifier {
   public:
-    ChildFiberFinishNotifier(Fiber &fiber) : _Parent(fiber) {}
+    ChildFiberFinishNotifier(Fiber& fiber) : _Parent(fiber) {}
     ~ChildFiberFinishNotifier() override {}
     void OnFiberFinished(std::shared_ptr<Fiber> fiber) override { _Parent._ChildSignals.Push(fiber); }
 
   private:
-    Fiber &_Parent;
+    Fiber& _Parent;
   };
 
   // owner is used by FiberFrame::Promise constructor
-  template <typename CoroutineFunction> static FiberFrame SpawnFiber(Fiber &owner, CoroutineFunction function) {
+  template <typename CoroutineFunction> static FiberFrame SpawnFiber(Fiber& owner, CoroutineFunction function) {
     co_await function();
   }
 
   template <typename CoroutineFunction>
-  requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
-  Fiber(Manager &manager, std::string &&name, FiberFinishNotifier &notifier, CoroutineFunction &&function)
+    requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
+  Fiber(Manager& manager, std::string&& name, FiberFinishNotifier& notifier, CoroutineFunction&& function)
       : _Manager(manager), _Name(std::move(name)), _FinishNotifier(notifier), _ChildFiberFinishNotifier(*this),
         _OutMostFrame(SpawnFiber(*this, std::forward<CoroutineFunction>(function))) {}
+
+  Fiber(const Fiber&) = delete;
+  Fiber& operator=(const Fiber&) = delete;
+  Fiber(Fiber&&) = delete;
+  Fiber& operator=(Fiber&&) = delete;
 
   OMNIFIBER_API void Suspend(std::coroutine_handle<> caller);
   OMNIFIBER_API void Resume(); // Called by Manager to schedule this fiber.
@@ -147,9 +151,9 @@ private:
   OMNIFIBER_API void Finishing();
   OMNIFIBER_API void SetException(std::exception_ptr eptr);
 
-  Manager &_Manager;
+  Manager& _Manager;
   const std::string _Name;
-  FiberFinishNotifier &_FinishNotifier;
+  FiberFinishNotifier& _FinishNotifier;
   ChildFiberFinishNotifier _ChildFiberFinishNotifier;
 
   State _State = State::NotStart;
@@ -167,7 +171,7 @@ private:
   std::set<std::shared_ptr<Fiber>> _Children;
 };
 
-boost::log::formatting_ostream &operator<<(boost::log::formatting_ostream &p, Fiber &fiber);
+boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);
 
 } // namespace Fiber
 } // namespace Omni

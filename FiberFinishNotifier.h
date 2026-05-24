@@ -9,7 +9,7 @@ class Fiber;
 
 class FiberFinishNotifier {
 public:
-  virtual ~FiberFinishNotifier() = 0 {}
+  virtual ~FiberFinishNotifier() {}
 
   virtual void OnFiberFinished(std::shared_ptr<Fiber> fiber) = 0;
 };

@@ -4,7 +4,7 @@
 #include <cassert>
 
 #include "Event.h"
-#include "Manager.h"
+#include "ManagerDeclare.h"
 
 namespace Omni {
 namespace Fiber {
@@ -86,14 +86,15 @@ void Fiber::SetException(std::exception_ptr eptr) {
   _State = State::Finishing;
 }
 
-void Fiber::DumpAllFibers(
-    boost::log::sources::severity_logger<boost::log::trivial::severity_level> &logger, int indent) {
+void Fiber::DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger,
+                          int indent) {
   BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::debug) << std::string(indent, ' ') << *this;
-  for (auto child : _Children)
+  for (auto child : _Children) {
     child->DumpAllFibers(logger, indent + 2);
+  }
 }
 
-boost::log::formatting_ostream &operator<<(boost::log::formatting_ostream &p, Fiber &fiber) {
+boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber) {
   p << "[Fiber " << fiber._Name << " @" << &fiber << " " << boost::describe::enum_to_string(fiber._State, "Unknown")
     << "]";
   return p;

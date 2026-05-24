@@ -3,12 +3,8 @@
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
 #include <cassert>
-#include <coroutine>
-#include <exception>
 #include <memory>
-#include <optional>
 #include <queue>
-#include <set>
 #include <string>
 #include <type_traits>
 
@@ -26,10 +22,10 @@ class Fiber;
 
 class Manager : public FiberFinishNotifier {
 public:
-  OMNIFIBER_API Manager(Executor &executor);
+  OMNIFIBER_API Manager(Executor& executor);
 
-  Manager(Manager &&) = delete;
-  Manager(const Manager &) = delete;
+  Manager(Manager&&) = delete;
+  Manager(const Manager&) = delete;
 
   OMNIFIBER_API static bool HasFiberRunning() { return _CurrentFiber.lock().operator bool(); }
 
@@ -44,12 +40,12 @@ public:
 
   // Spawn the root fiber
   template <typename CoroutineFunction>
-  requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction> std::shared_ptr<Fiber>
-  SpawnRoot(std::string &&name, CoroutineFunction &&function);
+    requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
+  std::shared_ptr<Fiber> SpawnRoot(std::string&& name, CoroutineFunction&& function);
 
   class Runner {
   public:
-    Runner(Manager &manager) : _Manager(manager) { _Manager.Posted = true; }
+    Runner(Manager& manager) : _Manager(manager) { _Manager.Posted = true; }
     ~Runner() {
       if (!Moved) {
         assert(_Manager._ReadyQueue.empty());
@@ -57,10 +53,10 @@ public:
       }
     }
 
-    Runner(const Runner &) = delete;
-    Runner &operator=(const Runner &) = delete;
-    Runner(Runner &&that) noexcept : _Manager(that._Manager) { that.Moved = true; }
-    Runner &operator=(Runner &&) = delete;
+    Runner(const Runner&) = delete;
+    Runner& operator=(const Runner&) = delete;
+    Runner(Runner&& that) noexcept : _Manager(that._Manager) { that.Moved = true; }
+    Runner& operator=(Runner&&) = delete;
 
     void operator()() {
       _Manager.Executing = true;
@@ -70,7 +66,7 @@ public:
 
   private:
     bool Moved = false;
-    Manager &_Manager;
+    Manager& _Manager;
   };
 
   Runner GetRunner() { return Runner(*this); }
@@ -104,7 +100,7 @@ private:
 
   OMNIFIBER_API void Run(); // Run until all fibers are not ready.
 
-  Executor &_Executor;
+  Executor& _Executor;
   bool Posted = false;
   bool Executing = false;
 

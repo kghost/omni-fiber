@@ -32,6 +32,7 @@
 #pragma warning Unknown dynamic link import / export semantics.
 #endif
 
+#if defined(_MSC_VER)
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
   switch (ul_reason_for_call) {
   case DLL_PROCESS_ATTACH:
@@ -42,3 +43,4 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
   }
   return TRUE;
 }
+#endif

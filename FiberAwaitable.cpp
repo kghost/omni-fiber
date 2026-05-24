@@ -1,7 +1,7 @@
 #include "FiberAwaitable.h"
 
 #include "Fiber.h"
-#include "Manager.h"
+#include "ManagerDeclare.h"
 
 namespace Omni {
 namespace Fiber {
@@ -9,8 +9,9 @@ namespace Fiber {
 void FiberAwaitable::await_suspend(std::coroutine_handle<> caller) { Manager::GetCurrentFiber()->Suspend(caller); }
 
 void FiberAwaitable::await_resume() {
-  if (Manager::GetCurrentFiber()->_Interrupted)
+  if (Manager::GetCurrentFiber()->_Interrupted) {
     throw Fiber::FiberInterrupted();
+  }
 }
 
 } // namespace Fiber

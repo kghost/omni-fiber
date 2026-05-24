@@ -1,7 +1,6 @@
 #pragma once
 
 #include <coroutine>
-#include <memory>
 
 #include "shared.h"
 

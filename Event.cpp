@@ -1,7 +1,7 @@
 #include "Event.h"
 
 #include "Fiber.h"
-#include "Manager.h"
+#include "ManagerDeclare.h"
 
 namespace Omni {
 namespace Fiber {
@@ -9,11 +9,13 @@ namespace Fiber {
 Event::Awaitable Event::operator co_await() { return Event::Awaitable(*this); }
 
 void Event::Set() {
-  if (_IsSet)
+  if (_IsSet) {
     return;
+  }
   _IsSet = true;
-  for (std::weak_ptr<Fiber> fiber : _PendingSet)
+  for (std::weak_ptr<Fiber> fiber : _PendingSet) {
     fiber.lock()->Schedule();
+  }
   _PendingSet.clear();
 }
 

@@ -8,7 +8,7 @@ class Manager;
 class Executor {
 public:
   virtual ~Executor() = default;
-  virtual void Post(Manager &manager) = 0;
+  virtual void Post(Manager& manager) = 0;
 };
 
 } // namespace Fiber

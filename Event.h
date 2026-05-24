@@ -22,13 +22,13 @@ public:
 private:
   class Awaitable : public FiberAwaitable {
   public:
-    OMNIFIBER_API Awaitable(Event &event) : _Event(event) {}
+    OMNIFIBER_API Awaitable(Event& event) : _Event(event) {}
 
     OMNIFIBER_API bool await_ready() { return _Event.IsSet(); }
     OMNIFIBER_API void await_suspend(std::coroutine_handle<> caller);
 
   private:
-    Event &_Event;
+    Event& _Event;
   };
 
 public:

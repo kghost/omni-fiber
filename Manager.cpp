@@ -1,11 +1,10 @@
-#include "Manager.h"
+#include "ManagerDeclare.h"
 
 #include <boost/format.hpp>
 #include <boost/log/attributes/constant.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/trivial.hpp>
 
-#include "Coroutine.h"
 #include "Fiber.h"
 
 namespace Omni {
@@ -13,16 +12,16 @@ namespace Fiber {
 
 std::weak_ptr<Fiber> Manager::_CurrentFiber;
 
-Manager::Manager(Executor &executor) : _Executor(executor) {
-  Log.add_attribute(
-      "Component",
-      boost::log::attributes::constant<std::string>((boost::format("%1%(%2%)") % typeid(*this).name() % this).str()));
+Manager::Manager(Executor& executor) : _Executor(executor) {
+  Log.add_attribute("Component", boost::log::attributes::constant<std::string>(
+                                     (boost::format("%1%(%2%)") % typeid(*this).name() % this).str()));
 }
 
 void Manager::Schedule(std::shared_ptr<Fiber> fiber) {
   _ReadyQueue.push(fiber);
-  if (!Executing && !Posted)
+  if (!Executing && !Posted) {
     _Executor.Post(*this);
+  }
 }
 
 void Manager::Run() {
