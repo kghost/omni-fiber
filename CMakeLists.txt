@@ -19,7 +19,7 @@ endif()
 
 # Find dependencies
 # Boost is heavily used (Asio, Log, Format, etc.)
-find_package(Boost REQUIRED COMPONENTS log thread)
+find_package(Boost REQUIRED COMPONENTS log)
 
 # Source files
 set(SOURCES
