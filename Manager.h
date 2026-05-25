@@ -21,9 +21,10 @@ namespace Fiber {
 
 class Fiber;
 
-class Manager : public FiberFinishNotifier {
+class Manager final : public FiberFinishNotifier {
 public:
   OMNIFIBER_API Manager(Executor& executor);
+  ~Manager();
 
   Manager(const Manager&) = delete;
   Manager& operator=(Manager&) = delete;

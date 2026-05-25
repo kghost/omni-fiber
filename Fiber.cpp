@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "Event.h"
+#include "FiberException.hpp"
 #include "GetCurrentFiber.hpp"
 #include "Manager.h"
 
@@ -37,6 +38,9 @@ Coroutine<void> Fiber::Join(std::shared_ptr<Fiber> child) {
   assert(_Children.contains(child) || _FinishedChildren.contains(child));
   co_await Wait([&] { return _FinishedChildren.contains(child); });
   _FinishedChildren.erase(child);
+  if (child->_Exception.has_value()) {
+    throw FiberException{.Fiber = child, .InnerException = child->_Exception.value()};
+  }
   co_return;
 }
 
@@ -46,6 +50,9 @@ Coroutine<std::shared_ptr<Fiber>> Fiber::WaitFor() {
   auto it = _FinishedChildren.begin();
   auto ret = *it;
   _FinishedChildren.erase(it);
+  if (ret->_Exception.has_value()) {
+    throw FiberException{.Fiber = ret, .InnerException = ret->_Exception.value()};
+  }
   co_return ret;
 }
 
@@ -89,15 +96,14 @@ void Fiber::Resume() {
 }
 
 void Fiber::Finishing() {
-  assert(_State == State::Running);
-  assert(_Children.empty());
+  assert(_State == State::Running || (_State == State::Finishing && _Exception.has_value()));
+  assert(_Children.empty() && _FinishedChildren.empty());
   _State = State::Finishing;
 }
 
 void Fiber::SetException(std::exception_ptr eptr) {
   assert(_State == State::Running);
   assert(_Children.empty());
-
   _Exception.emplace(eptr);
   _State = State::Finishing;
 }

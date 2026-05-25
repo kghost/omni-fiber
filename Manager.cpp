@@ -6,6 +6,7 @@
 #include <boost/log/trivial.hpp>
 
 #include "Fiber.h"
+#include "FiberException.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -14,6 +15,8 @@ Manager::Manager(Executor& executor) : _Executor(executor) {
   Log.add_attribute("Component", boost::log::attributes::constant<std::string>(
                                      (boost::format("%1%(%2%)") % typeid(*this).name() % this).str()));
 }
+
+Manager::~Manager() { assert(_RootFiber->IsFinished()); }
 
 void Manager::Schedule(std::shared_ptr<Fiber> fiber) {
   _ReadyQueue.push(fiber);
@@ -33,6 +36,10 @@ void Manager::Run() {
     if (auto fiber = weak.lock()) {
       fiber->Resume();
     }
+  }
+
+  if (_RootFiber->IsFinished() && _RootFiber->_Exception.has_value()) {
+    throw FiberException{.Fiber = _RootFiber, .InnerException = _RootFiber->_Exception.value()};
   }
 
   BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << std::string(10, '=') << " After Run";

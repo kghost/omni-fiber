@@ -17,7 +17,6 @@ public:
   FiberPromise& operator=(FiberPromise&&) = delete;
 
   virtual Fiber& GetFiber() = 0;
-  virtual Manager& GetManager() = 0;
 };
 
 } // namespace Fiber

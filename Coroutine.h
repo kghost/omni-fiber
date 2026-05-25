@@ -18,7 +18,6 @@ private:
   template <typename Impl> class PromiseBase : public FiberPromise {
   public:
     Fiber& GetFiber() override { return _CallerPromise.value().get().GetFiber(); }
-    Manager& GetManager() override { return _CallerPromise.value().get().GetManager(); }
 
     Coroutine get_return_object(this Impl& self) { return {std::coroutine_handle<Impl>::from_promise(self)}; }
     std::suspend_always initial_suspend() const noexcept { return {}; }

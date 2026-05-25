@@ -40,7 +40,6 @@ private:
       Promise& operator=(Promise&&) = delete;
 
       Fiber& GetFiber() override { return _Fiber; }
-      Manager& GetManager() override { return _Fiber.GetManager(); }
 
       auto initial_suspend() const noexcept {
         class Awaitor {
@@ -70,7 +69,7 @@ private:
         return Awaitor(_Fiber);
       }
 
-      void unhandled_exception() { _Fiber.SetException(std::current_exception()); } // TODO
+      void unhandled_exception() { _Fiber.SetException(std::current_exception()); }
       FiberFrame get_return_object() { return FiberFrame(std::coroutine_handle<promise_type>::from_promise(*this)); }
       void return_void() {}
 
