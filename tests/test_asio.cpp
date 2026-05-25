@@ -1,7 +1,6 @@
 #include <chrono>
 #include <memory>
 #include <string>
-#include <tuple>
 #include <utility>
 
 #include <boost/asio.hpp>
@@ -156,7 +155,8 @@ TEST(AsioTest, TcpSocketMultipleRounds) {
 
         // Write "pong" back to client
         std::string response = "pong_" + std::to_string(round);
-        auto [ecWrite, bytesWritten] = co_await boost::asio::async_write(socket, boost::asio::buffer(response), AsioUseFiber);
+        auto [ecWrite, bytesWritten] =
+            co_await boost::asio::async_write(socket, boost::asio::buffer(response), AsioUseFiber);
         EXPECT_FALSE(ecWrite);
         EXPECT_EQ(bytesWritten, response.size());
       }
@@ -174,7 +174,8 @@ TEST(AsioTest, TcpSocketMultipleRounds) {
       for (int round = 0; round < numRounds; ++round) {
         // Write "ping" to server
         std::string msg = "ping_" + std::to_string(round);
-        auto [ecWrite, bytesWritten] = co_await boost::asio::async_write(socket, boost::asio::buffer(msg), AsioUseFiber);
+        auto [ecWrite, bytesWritten] =
+            co_await boost::asio::async_write(socket, boost::asio::buffer(msg), AsioUseFiber);
         EXPECT_FALSE(ecWrite);
         EXPECT_EQ(bytesWritten, msg.size());
 
@@ -198,4 +199,3 @@ TEST(AsioTest, TcpSocketMultipleRounds) {
   EXPECT_TRUE(serverDone);
   EXPECT_TRUE(clientDone);
 }
-

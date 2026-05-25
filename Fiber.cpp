@@ -6,30 +6,47 @@
 #include <utility>
 
 #include "Event.h"
+#include "GetCurrentFiber.hpp"
 #include "Manager.h"
 
 namespace Omni {
 namespace Fiber {
 
-Coroutine<void> Fiber::Join(std::shared_ptr<Fiber> child) {
-  assert(_Children.contains(child));
-
-  if (child->IsFinished()) {
-    _Children.erase(child);
+OMNIFIBER_API Coroutine<void> Fiber::Wait(std::function<bool()> until) {
+  assert(&co_await GetCurrentFiber() == this);
+  if (until()) {
     co_return;
   }
-
-  while (!child->IsFinished()) {
-    co_await _ChildSignals;
+  while (true) {
     while (!_ChildSignals.IsEmpty()) {
       std::shared_ptr<Fiber> finished = _ChildSignals.PopFront();
       assert(finished->IsFinished());
-      if (finished == child) {
-        _Children.erase(child);
-        co_return;
-      }
+      assert(_Children.contains(finished));
+      _Children.erase(finished);
+      _FinishedChildren.insert(finished);
     }
+    if (until()) {
+      co_return;
+    }
+    co_await _ChildSignals;
+    assert(!_ChildSignals.IsEmpty());
   }
+}
+
+Coroutine<void> Fiber::Join(std::shared_ptr<Fiber> child) {
+  assert(_Children.contains(child) || _FinishedChildren.contains(child));
+  co_await Wait([&] { return _FinishedChildren.contains(child); });
+  _FinishedChildren.erase(child);
+  co_return;
+}
+
+Coroutine<std::shared_ptr<Fiber>> Fiber::WaitFor() {
+  assert(!_Children.empty() || !_FinishedChildren.empty());
+  co_await Wait([&] { return !_FinishedChildren.empty(); });
+  auto it = _FinishedChildren.begin();
+  auto ret = *it;
+  _FinishedChildren.erase(it);
+  co_return ret;
 }
 
 void Fiber::Schedule() {

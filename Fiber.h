@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <coroutine>
 #include <exception>
@@ -97,6 +98,7 @@ public:
   template <typename CoroutineFunction>
     requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
   std::shared_ptr<Fiber> Spawn(std::string&& name, CoroutineFunction&& function) {
+    assert(std::ranges::none_of(_Children, [&](auto& e) { return e->GetName() == name; }));
     auto child = std::shared_ptr<Fiber>(
         new Fiber(_Manager, std::move(name), _ChildFiberFinishNotifier, std::forward<CoroutineFunction>(function)));
     _Children.insert(child);
@@ -107,10 +109,14 @@ public:
   enum class State { NotStart, Running, Suspending, Suspended, Ready, Finishing, Finished };
   BOOST_DESCRIBE_NESTED_ENUM(State, NotStart, Running, Suspending, Suspended, Ready, Finishing, Finished);
 
+  OMNIFIBER_API const std::string& GetName() const { return _Name; }
   OMNIFIBER_API bool IsFinished() { return _State == State::Finished; }
   OMNIFIBER_API void Interrupt() { _Interrupted = true; } // Insert FiberInterrupted exception at next suspend point.
   OMNIFIBER_API void Schedule();
   OMNIFIBER_API Coroutine<void> Join(std::shared_ptr<Fiber> child); // Join the child fiber.
+  // Wait and join first exit child, then return the child.
+  OMNIFIBER_API Coroutine<std::shared_ptr<Fiber>> WaitFor();
+  OMNIFIBER_API Coroutine<void> Wait(std::function<bool()> until);
 
   class FiberInterrupted : public std::runtime_error {
   public:
@@ -176,6 +182,7 @@ private:
   FiberFrame _OutMostFrame;
   EventQueue<std::shared_ptr<Fiber>> _ChildSignals;
   std::set<std::shared_ptr<Fiber>> _Children;
+  std::set<std::shared_ptr<Fiber>> _FinishedChildren;
 };
 
 boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);

@@ -234,3 +234,169 @@ TEST(FiberTest, FiberInterruption) {
   EXPECT_TRUE(caughtInterruption);
   EXPECT_FALSE(childFinishedGracefully);
 }
+
+// 7. Test WaitFor basic functionality (first to exit)
+TEST(FiberTest, WaitForBasic) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  std::vector<std::shared_ptr<Fiber>> finishedOrder;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    Event child1Event;
+    Event child2Event;
+
+    auto child1 = current.Spawn("child1", [&]() -> Coroutine<void> {
+      co_await child1Event;
+      co_return;
+    });
+
+    auto child2 = current.Spawn("child2", [&]() -> Coroutine<void> {
+      co_await child2Event;
+      co_return;
+    });
+
+    // Make child2 finish first
+    child2Event.Set();
+
+    // Since child2 is finished, WaitFor should return child2
+    auto firstFinished = co_await current.WaitFor();
+    finishedOrder.push_back(firstFinished);
+
+    // Make child1 finish second
+    child1Event.Set();
+
+    std::shared_ptr<Fiber> secondFinished = co_await current.WaitFor();
+    finishedOrder.push_back(secondFinished);
+
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(finishedOrder.size(), 2);
+  EXPECT_EQ(finishedOrder[0]->GetName(), "child2");
+  EXPECT_EQ(finishedOrder[1]->GetName(), "child1");
+}
+
+// 8. Test WaitFor when child has already finished
+TEST(FiberTest, WaitForAlreadyFinished) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  std::string finishedName;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    Event resumeEvent;
+    auto child = current.Spawn("early_bird", [&]() -> Coroutine<void> {
+      resumeEvent.Set();
+      co_return;
+    });
+
+    co_await resumeEvent;
+
+    // At this point, child is fully finished.
+    // WaitFor should return immediately.
+    finishedName = (co_await current.WaitFor())->GetName();
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  EXPECT_EQ(finishedName, "early_bird");
+}
+
+// 9. Test WaitFor with multiple children already finished
+TEST(FiberTest, WaitForMultipleAlreadyFinished) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  std::vector<std::string> finishedNames;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    Event resumeEvent1;
+    auto child1 = current.Spawn("first", [&]() -> Coroutine<void> {
+      resumeEvent1.Set();
+      co_return;
+    });
+    co_await resumeEvent1;
+
+    Event resumeEvent2;
+    auto child2 = current.Spawn("second", [&]() -> Coroutine<void> {
+      resumeEvent2.Set();
+      co_return;
+    });
+    co_await resumeEvent2;
+
+    // At this point, both children are finished.
+    // WaitFor should return both names.
+    finishedNames.push_back((co_await current.WaitFor())->GetName());
+    finishedNames.push_back((co_await current.WaitFor())->GetName());
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(finishedNames.size(), 2);
+  EXPECT_TRUE(std::find(finishedNames.begin(), finishedNames.end(), "first") != finishedNames.end());
+  EXPECT_TRUE(std::find(finishedNames.begin(), finishedNames.end(), "second") != finishedNames.end());
+}
+
+// 10. Test that Join does not discard finish signals of other children
+TEST(FiberTest, JoinInterleavedSignalLossBug) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  std::string waitedName;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    Event event1;
+    Event event2;
+
+    auto child1 = current.Spawn("child1", [&]() -> Coroutine<void> {
+      co_await event1;
+      co_return;
+    });
+
+    auto child2 = current.Spawn("child2", [&]() -> Coroutine<void> {
+      co_await event2;
+      co_return;
+    });
+
+    auto child3 = current.Spawn("child3", [&]() -> Coroutine<void> { co_return; });
+
+    // Make child1 finish first
+    event1.Set();
+
+    // Make child2 finish second
+    event2.Set();
+
+    // Now parent calls Join(child2).
+    // Join(child2) will pop child1 (finished first) and must not discard it!
+    // Then it will pop child2 and return.
+    co_await current.Join(child2);
+
+    // Now parent calls WaitFor(). It should immediately find child1 since its signal was stored!
+    waitedName = (co_await current.WaitFor())->GetName();
+
+    // Join child3 as well so that no child remains in _Children
+    co_await current.WaitFor();
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  EXPECT_EQ(waitedName, "child1");
+}
