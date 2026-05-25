@@ -1,6 +1,8 @@
 #pragma once
 
 #include <optional>
+#include <type_traits>
+#include <utility>
 
 #include <boost/asio.hpp>
 
@@ -41,17 +43,21 @@ template <typename... Results> struct async_result<Omni::Fiber::AsioUseFiberType
   template <typename Initiation, typename... InitArgs>
   static Omni::Fiber::Coroutine<std::tuple<Results...>> initiate(Initiation&& init, Omni::Fiber::AsioUseFiberType,
                                                                  InitArgs&&... initArgs) {
-    boost::asio::cancellation_signal cancel;
-    std::optional<std::tuple<Results...>> rets;
-    Omni::Fiber::Event event;
-    init(boost::asio::bind_cancellation_slot(cancel.slot(),
-                                             [&rets, &event](Results... results) {
-                                               rets.emplace(std::move(results)...);
-                                               event.Set();
-                                             }),
-         std::forward<InitArgs>(initArgs)...);
-    co_await event;
-    co_return std::move(rets.value());
+    auto helper = [](std::decay_t<Initiation> init, std::decay_t<InitArgs>... initArgs)
+        -> Omni::Fiber::Coroutine<std::tuple<Results...>> {
+      boost::asio::cancellation_signal cancel;
+      std::optional<std::tuple<Results...>> rets;
+      Omni::Fiber::Event event;
+      init(boost::asio::bind_cancellation_slot(cancel.slot(),
+                                               [&rets, &event](Results... results) {
+                                                 rets.emplace(std::move(results)...);
+                                                 event.Set();
+                                               }),
+           std::move(initArgs)...);
+      co_await event;
+      co_return std::move(rets.value());
+    };
+    return helper(std::forward<Initiation>(init), std::forward<InitArgs>(initArgs)...);
   }
 };
 

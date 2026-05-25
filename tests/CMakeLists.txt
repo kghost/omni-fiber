@@ -20,3 +20,10 @@ target_link_libraries(omnifiber_test_get_current_fiber PRIVATE omnifiber GTest::
 target_compile_options(omnifiber_test_get_current_fiber PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 target_link_options(omnifiber_test_get_current_fiber PRIVATE -fsanitize=address)
 gtest_discover_tests(omnifiber_test_get_current_fiber)
+
+add_executable(omnifiber_test_asio test_asio.cpp)
+target_link_libraries(omnifiber_test_asio PRIVATE omnifiber GTest::gtest_main Boost::log Boost::thread)
+target_compile_options(omnifiber_test_asio PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(omnifiber_test_asio PRIVATE -fsanitize=address)
+gtest_discover_tests(omnifiber_test_asio)
+

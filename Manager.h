@@ -30,10 +30,7 @@ public:
   Manager(Manager&&) = delete;
   Manager& operator=(Manager&&) = delete;
 
-
-
   OMNIFIBER_API void DumpAllFibers();
-
   OMNIFIBER_API void Schedule(std::shared_ptr<Fiber> fiber); // Mark the fiber ready to be scheduled.
 
   // Spawn the root fiber
