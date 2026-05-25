@@ -13,12 +13,14 @@ class Fiber;
 
 template <typename Element> class EventQueue {
 public:
-  OMNIFIBER_API EventQueue() = default;
+  OMNIFIBER_API explicit EventQueue() = default;
 
   EventQueue(EventQueue&) = delete;
   EventQueue& operator=(EventQueue&) = delete;
+  EventQueue(EventQueue&&) = delete;
+  EventQueue& operator=(EventQueue&&) = delete;
 
-  OMNIFIBER_API auto operator co_await() { return _Event.operator co_await(); }
+  OMNIFIBER_API Event& operator co_await() { return _Event.operator co_await(); }
 
   OMNIFIBER_API bool IsEmpty() const { return _Queue.empty(); }
 

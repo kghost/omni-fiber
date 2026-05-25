@@ -6,8 +6,6 @@
 namespace Omni {
 namespace Fiber {
 
-Event::Awaitable Event::operator co_await() { return Event::Awaitable(*this); }
-
 void Event::Set() {
   if (_IsSet) {
     return;
@@ -19,8 +17,8 @@ void Event::Set() {
   _PendingSet.clear();
 }
 
-void Event::Awaitable::await_suspend(std::coroutine_handle<> caller) {
-  _Event._PendingSet.push_back(Manager::GetCurrentFiber());
+void Event::await_suspend(std::coroutine_handle<> caller) {
+  _PendingSet.push_back(Manager::GetCurrentFiber());
   FiberAwaitable::await_suspend(caller);
 }
 

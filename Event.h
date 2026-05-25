@@ -12,7 +12,7 @@ namespace Fiber {
 
 class Fiber;
 
-class Event {
+class Event : public FiberAwaitable {
 public:
   explicit Event() = default;
 
@@ -26,20 +26,10 @@ public:
 
   OMNIFIBER_API void Set();
 
-private:
-  class Awaitable : public FiberAwaitable {
-  public:
-    OMNIFIBER_API Awaitable(Event& event) : _Event(event) {}
+  OMNIFIBER_API bool await_ready() { return IsSet(); }
+  OMNIFIBER_API void await_suspend(std::coroutine_handle<> caller);
 
-    OMNIFIBER_API bool await_ready() { return _Event.IsSet(); }
-    OMNIFIBER_API void await_suspend(std::coroutine_handle<> caller);
-
-  private:
-    Event& _Event;
-  };
-
-public:
-  OMNIFIBER_API Awaitable operator co_await();
+  OMNIFIBER_API Event& operator co_await() { return *this; }
 
 private:
   bool _IsSet = false;

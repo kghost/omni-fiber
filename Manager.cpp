@@ -47,7 +47,7 @@ void Manager::Run() {
 
 void Manager::DumpAllFibers() { _RootFiber->DumpAllFibers(Log, 0); }
 
-void Manager::OnFiberFinished(std::shared_ptr<Fiber> _) {
+void Manager::OnFiberFinished(std::shared_ptr<Fiber> /*unused*/) {
   BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << "All Fiber Finished.";
 }
 

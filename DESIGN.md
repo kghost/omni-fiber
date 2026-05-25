@@ -42,10 +42,6 @@ graph TD
 
 Standard C++20 coroutines require a return type acting as the "coroutine interface" along with a nested `promise_type`. OmniFiber defines `Coroutine<RetType>`, where:
 
-- `ReturnState` is a shared state containing:
-  - An optional return value (`RetType`).
-  - An exception pointer (`std::exception_ptr`) if the coroutine failed.
-  - A continuation handle (`std::coroutine_handle<>`) pointing to the caller frame.
 - `PromiseBase`, `PromiseVoid`, and `PromiseNonVoid` act as promise objects representing the coroutine's internal control block:
   - `initial_suspend()` returns `std::suspend_never{}`, meaning the coroutine starts executing immediately upon call.
   - `final_suspend()` returns a custom `FinalAwaiter`.

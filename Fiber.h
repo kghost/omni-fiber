@@ -30,7 +30,7 @@ private:
   public:
     class Promise final {
     public:
-      Promise(Fiber& fiber, auto&) : _Fiber(fiber) {}
+      explicit Promise(Fiber& fiber, auto&) : _Fiber(fiber) {}
 
       Promise(const Promise&) = delete;
       Promise& operator=(const Promise&) = delete;
@@ -56,7 +56,7 @@ private:
         public:
           Awaitor(Fiber& owner) : _Fiber(owner) {}
           constexpr bool await_ready() const noexcept { return false; }
-          void await_suspend(std::coroutine_handle<> _) const noexcept { _Fiber.Finishing(); }
+          void await_suspend(std::coroutine_handle<> /*unused*/) const noexcept { _Fiber.Finishing(); }
           constexpr void await_resume() const noexcept {}
 
         private:
@@ -85,7 +85,7 @@ private:
     ~FiberFrame() { _CoroutineState.destroy(); }
 
   private:
-    FiberFrame(std::coroutine_handle<> state) : _CoroutineState(state) {}
+    explicit FiberFrame(std::coroutine_handle<> state) : _CoroutineState(state) {}
     std::coroutine_handle<> _CoroutineState;
   };
 
@@ -131,7 +131,7 @@ private:
   };
 
   // owner is used by FiberFrame::Promise constructor
-  template <typename CoroutineFunction> static FiberFrame SpawnFiber(Fiber& _, CoroutineFunction function) {
+  template <typename CoroutineFunction> static FiberFrame SpawnFiber(Fiber& /*unused*/, CoroutineFunction function) {
     co_await function();
   }
 

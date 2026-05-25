@@ -2,6 +2,8 @@
 
 #include <boost/describe/enum_to_string.hpp>
 #include <cassert>
+#include <optional>
+#include <utility>
 
 #include "Event.h"
 #include "Manager.h"
@@ -53,9 +55,7 @@ void Fiber::StartingYield(std::coroutine_handle<> caller) {
 void Fiber::Resume() {
   assert(_State == State::Ready);
   _State = State::Running;
-  std::coroutine_handle<> cont = _Continuation.value();
-  _Continuation.reset();
-  cont.resume();
+  std::exchange(_Continuation, std::nullopt).value().resume();
   switch (_State) {
   case State::Suspending:
     assert(_Continuation.has_value());
@@ -74,7 +74,6 @@ void Fiber::Resume() {
 void Fiber::Finishing() {
   assert(_State == State::Running);
   assert(_Children.empty());
-
   _State = State::Finishing;
 }
 

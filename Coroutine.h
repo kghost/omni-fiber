@@ -3,7 +3,6 @@
 #include <cassert>
 #include <coroutine>
 #include <exception>
-#include <memory>
 #include <optional>
 #include <type_traits>
 
@@ -12,151 +11,92 @@ namespace Fiber {
 
 template <typename RetType> class Coroutine {
 private:
-  class ReturnState {
+  template <typename Impl> class PromiseBase {
   public:
-    void FinishWithValue() noexcept
-      requires std::is_void_v<RetType>
-    {
-      _RetValue = true;
+    Coroutine get_return_object(this Impl& self) { return {std::coroutine_handle<Impl>::from_promise(self)}; }
+    std::suspend_never initial_suspend() const noexcept { return {}; }
+    auto final_suspend() noexcept {
+      struct FinalAwaiter {
+        bool await_ready() noexcept { return false; }
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<Impl> h) noexcept {
+          if (h.promise()._Caller.has_value()) {
+            return h.promise()._Caller.value();
+          } else {
+            return std::noop_coroutine();
+          }
+        }
+        void await_resume() noexcept {}
+      };
+      return FinalAwaiter{};
     }
-    template <typename T = RetType>
-      requires(!std::is_void_v<T>)
-    void FinishWithValue(T&& ret) noexcept {
-      _RetValue.emplace(std::move(ret));
-    }
-    void FinishWithException(std::exception_ptr eptr) noexcept { _Exception = eptr; }
+    void unhandled_exception() { _Exception.emplace(std::current_exception()); }
 
-    bool IsFinished() const noexcept { return bool(_RetValue) || _Exception != nullptr; }
+    bool IsFinished() const noexcept { return _Exception.has_value(); }
 
-    RetType Continue() {
-      assert(IsFinished());
-      if (_Exception != nullptr) {
-        std::rethrow_exception(_Exception);
-      }
-      if constexpr (std::is_void_v<RetType>) {
-        return;
-      } else {
-        return std::move(_RetValue.value());
-      }
-    }
+  protected:
+    friend class Coroutine;
+    std::optional<std::exception_ptr> _Exception;
+    std::optional<std::coroutine_handle<>> _Caller;
+  };
 
-    bool HasWaiter() const noexcept { return _Continuation.has_value(); }
-    void SetWaiter(std::coroutine_handle<> waiter) noexcept { _Continuation.emplace(waiter); }
-    void ResumeWaiter() const noexcept { return _Continuation.value().resume(); }
+  class PromiseVoid final : public PromiseBase<PromiseVoid> {
+  public:
+    void return_void() { _IsReturned = true; }
+
+    bool IsFinished() const noexcept { return PromiseBase<PromiseVoid>::IsFinished() || _IsReturned; }
 
   private:
-    std::optional<std::coroutine_handle<>> _Continuation;
-    std::conditional_t<std::is_void_v<RetType>, bool, std::optional<RetType>> _RetValue = ([] {
-      if constexpr (std::is_void_v<RetType>) {
-        return false;
-      } else {
-        return std::optional<RetType>();
-      }
-    })();
-    std::exception_ptr _Exception;
+    friend class Coroutine;
+    bool _IsReturned = false;
+  };
+
+  class PromiseNonVoid final : public PromiseBase<PromiseNonVoid> {
+  public:
+    void return_value(RetType&& ret) { _ReturnValue.emplace(std::move(ret)); }
+
+    bool IsFinished() const noexcept { return PromiseBase<PromiseNonVoid>::IsFinished() || _ReturnValue.has_value(); }
+    RetType&& GetReturnValue() { return std::move(_ReturnValue.value()); }
+
+  private:
+    friend class Coroutine;
+    std::optional<RetType> _ReturnValue;
   };
 
 public:
-  class PromiseBase {
-  public:
-    auto initial_suspend() const noexcept { return std::suspend_never{}; }
-    auto final_suspend() noexcept {
-      // It is suggested to always suspend at final_suspend. Such that the Coroutine object controls the lifespan of the
-      // coroutine state. The Coroutine inside the Corotine::Awaitor object controls when the Coroutine is destroyed.
-      class FinalAwaiter {
-      public:
-        FinalAwaiter(ReturnState& ret) : _ReturnState(ret) {}
-
-        bool await_ready() const noexcept { return false; }
-        void await_suspend(std::coroutine_handle<>) const noexcept {
-          // If the Coroutine is ever suspended, resume upper frame, otherwise return the control to upper frame.
-          if (_ReturnState.HasWaiter()) {
-            _ReturnState.ResumeWaiter();
-          }
-        }
-        void await_resume() const noexcept {}
-
-      private:
-        ReturnState& _ReturnState;
-      };
-
-      return FinalAwaiter(*_ReturnState);
-    }
-
-    void unhandled_exception() { std::terminate(); } // TODO
-
-  protected:
-    std::shared_ptr<ReturnState> _ReturnState;
-  };
-
-  class PromiseVoid : public PromiseBase {
-  public:
-    Coroutine get_return_object() {
-      Coroutine coroutine(std::coroutine_handle<promise_type>::from_promise(*this));
-      PromiseBase::_ReturnState = coroutine._RetState;
-      return coroutine;
-    }
-
-    void return_void() { PromiseBase::_ReturnState->FinishWithValue(); }
-  };
-
-  class PromiseNonVoid : public PromiseBase {
-  public:
-    Coroutine get_return_object() {
-      Coroutine coroutine(std::coroutine_handle<promise_type>::from_promise(*this));
-      PromiseBase::_ReturnState = coroutine._RetState;
-      return coroutine;
-    }
-
-    void return_value(RetType&& ret) { PromiseBase::_ReturnState->FinishWithValue(std::move(ret)); }
-  };
-
   using promise_type = std::conditional<std::is_void_v<RetType>, PromiseVoid, PromiseNonVoid>::type;
-
-  // The Awaitor is stored in the caller's coroutine state, its template parameter RetType is the callee's return type.
-  // It will recevie the caller's coroutine_handle at await_suspend.
-  //
-  // When a caller Coroutine awaits an inner Coroutine, the Coroutine of inner callee becomes the Awaitable, stored
-  // inside the Coroutine of outer caller. When the callee finished, it will resume the outer caller via await_resume.
-  //
-  // co_await a Coroutine doesn't change the state of the fiber.
-  //
-  // The lifespan of coroutine state of the callee is bound to _Callee.
-  class Awaitable {
-  public:
-    Awaitable(Coroutine&& callee) : _Callee(std::move(callee)) {}
-
-    bool await_ready() const noexcept { return _Callee._RetState->IsFinished(); }
-    void await_suspend(std::coroutine_handle<> caller) noexcept { _Callee._RetState->SetWaiter(caller); }
-    RetType await_resume() noexcept { return _Callee._RetState->Continue(); }
-
-  private:
-    Coroutine _Callee;
-  };
-
-  auto operator co_await() { return Awaitable(std::move(*this)); }
+  Coroutine(std::coroutine_handle<promise_type> callee) : _Callee(callee) {}
+  ~Coroutine() {
+    assert(_Callee.promise().IsFinished()); // If hits, you probably forget to co_await a Coroutine.
+    _Callee.destroy();
+  }
 
   Coroutine(const Coroutine&) = delete;
   Coroutine& operator=(const Coroutine&) = delete;
+  Coroutine(const Coroutine&&) = delete;
+  Coroutine& operator=(const Coroutine&&) = delete;
 
-  Coroutine(Coroutine&& that)
-      : _RetState(std::move(that._RetState)), _CoroutineState(std::move(that._CoroutineState.value())) {
-    that._CoroutineState.reset();
+  Coroutine& operator co_await() { return *this; }
+
+  bool await_ready() const noexcept { return _Callee.promise().IsFinished(); }
+  template <typename T> void await_suspend(std::coroutine_handle<T> caller) noexcept {
+    _Callee.promise()._Caller.emplace(caller);
   }
-  Coroutine& operator=(Coroutine&&) = delete;
+  RetType await_resume() {
+    promise_type& promise = _Callee.promise();
+    if (promise._Exception.has_value()) {
+      // This throws the exception directly into the caller's execution frame
+      std::rethrow_exception(promise._Exception.value());
+    }
 
-  ~Coroutine() {
-    assert(!_RetState || _RetState->IsFinished()); // If hits, you probably forget to co_await a Coroutine.
-    if (_CoroutineState.has_value()) {
-      _CoroutineState.value().destroy();
+    if constexpr (std::is_void_v<RetType>) {
+      return;
+    } else {
+      return _Callee.promise().GetReturnValue();
     }
   }
 
 private:
-  Coroutine(std::coroutine_handle<> state) : _CoroutineState(state) {}
-
-  std::shared_ptr<ReturnState> _RetState = std::make_shared<ReturnState>();
-  std::optional<std::coroutine_handle<>> _CoroutineState;
+  std::coroutine_handle<promise_type> _Callee;
 };
 
 } // namespace Fiber
