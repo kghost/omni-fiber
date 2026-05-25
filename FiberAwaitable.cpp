@@ -1,15 +1,13 @@
 #include "FiberAwaitable.h"
 
 #include "Fiber.h"
-#include "Manager.h"
 
 namespace Omni {
 namespace Fiber {
 
-void FiberAwaitable::await_suspend(std::coroutine_handle<> caller) { Manager::GetCurrentFiber()->Suspend(caller); }
-
 void FiberAwaitable::await_resume() {
-  if (Manager::GetCurrentFiber()->_Interrupted) {
+  assert(_Fiber.has_value());
+  if (_Fiber.value().get()._Interrupted) {
     throw Fiber::FiberInterrupted();
   }
 }

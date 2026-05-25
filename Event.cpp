@@ -17,10 +17,5 @@ void Event::Set() {
   _PendingSet.clear();
 }
 
-void Event::await_suspend(std::coroutine_handle<> caller) {
-  _PendingSet.push_back(Manager::GetCurrentFiber());
-  FiberAwaitable::await_suspend(caller);
-}
-
 } // namespace Fiber
 } // namespace Omni

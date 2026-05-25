@@ -30,12 +30,7 @@ public:
   Manager(Manager&&) = delete;
   Manager& operator=(Manager&&) = delete;
 
-  OMNIFIBER_API static bool HasFiberRunning() { return _CurrentFiber.lock().operator bool(); }
 
-  OMNIFIBER_API static std::shared_ptr<Fiber> GetCurrentFiber() {
-    assert(HasFiberRunning());
-    return _CurrentFiber.lock();
-  }
 
   OMNIFIBER_API void DumpAllFibers();
 
@@ -81,30 +76,6 @@ public:
   void OnFiberFinished(std::shared_ptr<Fiber> fiber) override;
 
 private:
-  class CurrentFiberSetter {
-  public:
-    CurrentFiberSetter(std::shared_ptr<Fiber> current)
-#ifndef NDEBUG
-        : _Current(current)
-#endif
-    {
-      assert(!Manager::HasFiberRunning());
-      Manager::_CurrentFiber = current;
-    }
-
-    ~CurrentFiberSetter() {
-#ifndef NDEBUG
-      assert(Manager::GetCurrentFiber() == _Current);
-#endif
-      Manager::_CurrentFiber.reset();
-    }
-
-  private:
-#ifndef NDEBUG
-    std::shared_ptr<Fiber> _Current;
-#endif
-  };
-
   OMNIFIBER_API void Run(); // Run until all fibers are not ready.
 
   Executor& _Executor;
@@ -113,8 +84,6 @@ private:
 
   std::queue<std::weak_ptr<Fiber>> _ReadyQueue;
   std::shared_ptr<Fiber> _RootFiber;
-
-  static std::weak_ptr<Fiber> _CurrentFiber;
 
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> Log;
 };

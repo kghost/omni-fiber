@@ -8,6 +8,7 @@
 #include "Coroutine.h"
 #include "EventQueue.h"
 #include "Fiber.h"
+#include "GetCurrentFiber.hpp"
 #include "Manager.h"
 
 using namespace Omni::Fiber;
@@ -85,25 +86,25 @@ int main() {
 
   // Spawn the root fiber to orchestrate the worker and producer tree
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    auto current = Manager::GetCurrentFiber();
+    Fiber& current = co_await GetCurrentFiber();
     std::cout << "[Root] Spawning fibers..." << std::endl;
 
     // Spawn three worker fibers
-    auto worker1 = current->Spawn("worker1", [&]() { return WorkerFiber(1, io, taskQueue); });
-    auto worker2 = current->Spawn("worker2", [&]() { return WorkerFiber(2, io, taskQueue); });
-    auto worker3 = current->Spawn("worker3", [&]() { return WorkerFiber(3, io, taskQueue); });
+    auto worker1 = current.Spawn("worker1", [&]() { return WorkerFiber(1, io, taskQueue); });
+    auto worker2 = current.Spawn("worker2", [&]() { return WorkerFiber(2, io, taskQueue); });
+    auto worker3 = current.Spawn("worker3", [&]() { return WorkerFiber(3, io, taskQueue); });
 
     // Spawn one producer fiber
-    auto producer = current->Spawn("producer", [&]() { return ProducerFiber(io, taskQueue, numWorkers); });
+    auto producer = current.Spawn("producer", [&]() { return ProducerFiber(io, taskQueue, numWorkers); });
 
     // Wait cooperatively for the producer to finish generating all tasks
-    co_await current->Join(producer);
+    co_await current.Join(producer);
     std::cout << "[Root] Producer has finished. Waiting for workers to complete..." << std::endl;
 
     // Wait cooperatively for all workers to finish their processing
-    co_await current->Join(worker1);
-    co_await current->Join(worker2);
-    co_await current->Join(worker3);
+    co_await current.Join(worker1);
+    co_await current.Join(worker2);
+    co_await current.Join(worker3);
 
     std::cout << "[Root] All workers finished. Example complete!" << std::endl;
     co_return;

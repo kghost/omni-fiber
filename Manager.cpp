@@ -10,8 +10,6 @@
 namespace Omni {
 namespace Fiber {
 
-std::weak_ptr<Fiber> Manager::_CurrentFiber;
-
 Manager::Manager(Executor& executor) : _Executor(executor) {
   Log.add_attribute("Component", boost::log::attributes::constant<std::string>(
                                      (boost::format("%1%(%2%)") % typeid(*this).name() % this).str()));
@@ -29,13 +27,10 @@ void Manager::Run() {
   DumpAllFibers();
   BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << std::string(10, '=') << " Before Run";
 
-  assert(!HasFiberRunning());
-
   while (!_ReadyQueue.empty()) {
     std::weak_ptr<Fiber> weak = _ReadyQueue.front();
     _ReadyQueue.pop();
     if (auto fiber = weak.lock()) {
-      auto setter = CurrentFiberSetter(fiber);
       fiber->Resume();
     }
   }

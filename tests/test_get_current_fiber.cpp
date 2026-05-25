@@ -46,10 +46,11 @@ TEST(GetCurrentFiberTest, RetrieveRootFiber) {
 
   bool executed = false;
 
-  auto root = manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+  std::shared_ptr<Fiber> root;
+  root = manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     Fiber& currentFiber = co_await GetCurrentFiber();
     // Since this is the root fiber, currentFiber should be the active root fiber
-    EXPECT_EQ(&currentFiber, Manager::GetCurrentFiber().get());
+    EXPECT_EQ(&currentFiber, root.get());
     executed = true;
     co_return;
   });
@@ -88,24 +89,24 @@ TEST(GetCurrentFiberTest, SiblingFibers) {
   std::shared_ptr<Fiber> child2Ref;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    auto current = Manager::GetCurrentFiber();
+    Fiber& current = co_await GetCurrentFiber();
 
-    child1Ref = current->Spawn("child1", [&]() -> Coroutine<void> {
+    child1Ref = current.Spawn("child1", [&]() -> Coroutine<void> {
       Fiber& currentFiber = co_await GetCurrentFiber();
       EXPECT_EQ(&currentFiber, child1Ref.get());
       child1Executed = true;
       co_return;
     });
 
-    child2Ref = current->Spawn("child2", [&]() -> Coroutine<void> {
+    child2Ref = current.Spawn("child2", [&]() -> Coroutine<void> {
       Fiber& currentFiber = co_await GetCurrentFiber();
       EXPECT_EQ(&currentFiber, child2Ref.get());
       child2Executed = true;
       co_return;
     });
 
-    co_await current->Join(child1Ref);
-    co_await current->Join(child2Ref);
+    co_await current.Join(child1Ref);
+    co_await current.Join(child2Ref);
     co_return;
   });
 

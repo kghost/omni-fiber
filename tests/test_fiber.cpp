@@ -9,6 +9,7 @@
 #include "Event.h"
 #include "EventQueue.h"
 #include "Fiber.h"
+#include "GetCurrentFiber.hpp"
 #include "Manager.h"
 
 using namespace Omni::Fiber;
@@ -30,14 +31,14 @@ TEST(FiberTest, BasicSpawnAndSchedule) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     rootExecuted = true;
-    auto current = Manager::GetCurrentFiber();
+    Fiber& current = co_await GetCurrentFiber();
 
-    auto child = current->Spawn("child", [&]() -> Coroutine<void> {
+    auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       childExecuted = true;
       co_return;
     });
 
-    co_await current->Join(child);
+    co_await current.Join(child);
     co_return;
   });
 
@@ -57,15 +58,15 @@ TEST(FiberTest, FiberJoin) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     order.push_back("root_start");
-    auto current = Manager::GetCurrentFiber();
+    Fiber& current = co_await GetCurrentFiber();
 
-    auto child = current->Spawn("child", [&]() -> Coroutine<void> {
+    auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       order.push_back("child_run");
       co_return;
     });
 
     order.push_back("root_before_join");
-    co_await current->Join(child);
+    co_await current.Join(child);
     order.push_back("root_after_join");
 
     co_return;
@@ -112,10 +113,10 @@ TEST(FiberTest, CooperativeEvent) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    auto current = Manager::GetCurrentFiber();
+    Fiber& current = co_await GetCurrentFiber();
 
     // Spawn consumer
-    auto consumer = current->Spawn("consumer", [&]() -> Coroutine<void> {
+    auto consumer = current.Spawn("consumer", [&]() -> Coroutine<void> {
       sequence.push_back("consumer_waiting");
       co_await startEvent;
       sequence.push_back("consumer_resumed");
@@ -124,7 +125,7 @@ TEST(FiberTest, CooperativeEvent) {
     });
 
     // Spawn producer
-    auto producer = current->Spawn("producer", [&]() -> Coroutine<void> {
+    auto producer = current.Spawn("producer", [&]() -> Coroutine<void> {
       sequence.push_back("producer_running");
       EXPECT_FALSE(consumerFinished);
       startEvent.Set();
@@ -133,8 +134,8 @@ TEST(FiberTest, CooperativeEvent) {
       co_return;
     });
 
-    co_await current->Join(consumer);
-    co_await current->Join(producer);
+    co_await current.Join(consumer);
+    co_await current.Join(producer);
     co_return;
   });
 
@@ -160,10 +161,10 @@ TEST(FiberTest, CooperativeEventQueue) {
   std::vector<int> received;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    auto current = Manager::GetCurrentFiber();
+    Fiber& current = co_await GetCurrentFiber();
 
     // Consumer
-    auto consumer = current->Spawn("consumer", [&]() -> Coroutine<void> {
+    auto consumer = current.Spawn("consumer", [&]() -> Coroutine<void> {
       for (int i = 0; i < 3; ++i) {
         co_await queue;
         received.push_back(queue.PopFront());
@@ -172,15 +173,15 @@ TEST(FiberTest, CooperativeEventQueue) {
     });
 
     // Producer
-    auto producer = current->Spawn("producer", [&]() -> Coroutine<void> {
+    auto producer = current.Spawn("producer", [&]() -> Coroutine<void> {
       queue.Push(10);
       queue.Push(20);
       queue.Push(30);
       co_return;
     });
 
-    co_await current->Join(consumer);
-    co_await current->Join(producer);
+    co_await current.Join(consumer);
+    co_await current.Join(producer);
     co_return;
   });
 
@@ -203,9 +204,9 @@ TEST(FiberTest, FiberInterruption) {
   bool childFinishedGracefully = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    auto current = Manager::GetCurrentFiber();
+    Fiber& current = co_await GetCurrentFiber();
 
-    auto child = current->Spawn("child", [&]() -> Coroutine<void> {
+    auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       try {
         co_await blockEvent; // Will suspend forever unless interrupted
         childFinishedGracefully = true;
@@ -216,15 +217,15 @@ TEST(FiberTest, FiberInterruption) {
     });
 
     // Spawn an interrupter
-    auto interrupter = current->Spawn("interrupter", [&, child]() -> Coroutine<void> {
+    auto interrupter = current.Spawn("interrupter", [&, child]() -> Coroutine<void> {
       child->Interrupt();
       // Reschedule the child to process the interruption
       child->Schedule();
       co_return;
     });
 
-    co_await current->Join(child);
-    co_await current->Join(interrupter);
+    co_await current.Join(child);
+    co_await current.Join(interrupter);
     co_return;
   });
 

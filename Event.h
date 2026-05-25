@@ -27,7 +27,12 @@ public:
   OMNIFIBER_API void Set();
 
   OMNIFIBER_API bool await_ready() { return IsSet(); }
-  OMNIFIBER_API void await_suspend(std::coroutine_handle<> caller);
+
+  template <typename PromiseType>
+  void await_suspend(std::coroutine_handle<PromiseType> caller) {
+    _PendingSet.push_back(caller.promise().GetFiber().shared_from_this());
+    FiberAwaitable::await_suspend(caller);
+  }
 
   OMNIFIBER_API Event& operator co_await() { return *this; }
 
