@@ -43,13 +43,23 @@ graph TD
 Standard C++20 coroutines require a return type acting as the "coroutine interface" along with a nested `promise_type`. OmniFiber defines `Coroutine<RetType>`, where:
 
 - `PromiseBase`, `PromiseVoid`, and `PromiseNonVoid` act as promise objects representing the coroutine's internal control block:
-  - `initial_suspend()` returns `std::suspend_never{}`, meaning the coroutine starts executing immediately upon call.
+  - `initial_suspend()` returns `std::suspend_always{}`, ensuring lazy initialization of the coroutine. The promise hierarchy is safely established via symmetric transfer when the coroutine is `co_awaited`.
   - `final_suspend()` returns a custom `FinalAwaiter`.
   - When the coroutine hits its final suspension point (completion/return), `FinalAwaiter` resumes the continuation handle of the caller. This transfers execution back up the call stack.
 - `Awaitable` acts as the `co_await` adapter. When a caller coroutine invokes `co_await callee`, the `Awaitable` registers the caller as the `_Continuation` waiter and yields control. Once the callee finishes, it resumes the caller.
 
 > [!NOTE]
 > The lifecycle of the underlying coroutine state is bound to the `Coroutine` object. The custom `FinalAwaiter` suspends at the very end (`final_suspend`), ensuring that `std::coroutine_handle::destroy()` is safely managed by the `Coroutine` destructor when the block scope terminates.
+
+### Dynamic Stack-Based Fiber Retrieval (`GetCurrentFiber`)
+
+To retrieve the active `Fiber` reference from nested coroutine frames without using any global or thread-local variables, OmniFiber implements a dynamic stack-based traversal:
+
+1. **`FiberPromise` Interface**: `FiberPromise` defines the virtual method `virtual Fiber& GetFiber() = 0;`.
+2. **Root Promise**: `FiberFrame::Promise` (the root frame of any Fiber) overrides `GetFiber()` to directly return the reference to the owning `Fiber`.
+3. **Coroutine Promise Delegation**: The intermediate `Coroutine` promise `PromiseBase` overrides `GetFiber()` to recursively delegate to `_CallerPromise.value().get().GetFiber()`.
+4. **Symmetric Traversal Awaiter (`GetCurrentFiber`)**:
+   When `co_await GetCurrentFiber()` is invoked, the compiler passes `std::coroutine_handle<PromiseType> caller` to the awaiter's `await_suspend()`. The awaiter extracts `caller.promise().GetFiber()`, traversing up the stack frames until it reaches the root `FiberFrame::Promise`, and returns the `Fiber&` from `await_resume()` without suspending the coroutine (it returns `false` in `await_suspend()`).
 
 ---
 
@@ -178,7 +188,7 @@ OmniFiber provides cooperative synchronization tools to coordinate independent f
 An `Event` acts as a cooperative binary semaphore or notification signal:
 - It maintains a `std::list<std::weak_ptr<Fiber>> _PendingSet` containing fibers waiting for the event.
 - When `co_await event` is called, it triggers `Event::Awaitable::await_suspend()`, which:
-  - Appends the current active fiber (`Manager::GetCurrentFiber()`) to `_PendingSet`.
+  - Appends the current active fiber (obtained via `co_await GetCurrentFiber()`) to `_PendingSet`.
   - Suspends the fiber cooperatively.
 - When a fiber calls `Set()`, the event sets `_IsSet = true`, walks the `_PendingSet`, schedules each waiting fiber back onto the `Manager`, and clears the pending list.
 

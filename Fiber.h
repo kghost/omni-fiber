@@ -16,6 +16,7 @@
 #include "Coroutine.h"
 #include "EventQueue.h"
 #include "FiberFinishNotifier.h"
+#include "FiberPromise.hpp"
 
 #include "shared.h"
 
@@ -28,7 +29,7 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
 private:
   class FiberFrame {
   public:
-    class Promise final {
+    class Promise final : public FiberPromise {
     public:
       explicit Promise(Fiber& fiber, auto&) : _Fiber(fiber) {}
 
@@ -36,6 +37,9 @@ private:
       Promise& operator=(const Promise&) = delete;
       Promise(Promise&&) = delete;
       Promise& operator=(Promise&&) = delete;
+
+      Fiber& GetFiber() override { return _Fiber; }
+      Manager& GetManager() override { return _Fiber.GetManager(); }
 
       auto initial_suspend() const noexcept {
         class Awaitor {
@@ -146,6 +150,7 @@ private:
   Fiber(Fiber&&) = delete;
   Fiber& operator=(Fiber&&) = delete;
 
+  OMNIFIBER_API Manager& GetManager() { return _Manager; }
   OMNIFIBER_API void Suspend(std::coroutine_handle<> caller);
   OMNIFIBER_API void Resume(); // Called by Manager to schedule this fiber.
 

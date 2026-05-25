@@ -68,7 +68,20 @@ The fiber scheduler. It runs a queue of "ready" fibers and schedules them onto t
   });
   ```
 
-### 4. Boost.Asio Completion Token (`AsioUseFiber`)
+### 4. GetCurrentFiber Awaitable (`GetCurrentFiber`)
+An awaitable to retrieve a reference to the active `Fiber` from inside a running fiber, without relying on any global or thread-local states.
+- **Usage**:
+  ```cpp
+  #include <omnifiber/GetCurrentFiber.hpp>
+
+  Omni::Fiber::Coroutine<void> Worker() {
+      Fiber& current = co_await Omni::Fiber::GetCurrentFiber();
+      // Use current fiber reference...
+      co_return;
+  }
+  ```
+
+### 5. Boost.Asio Completion Token (`AsioUseFiber`)
 The flagship integration feature. Pass `Omni::Fiber::AsioUseFiber` as the completion token to any Boost.Asio async operation (e.g., `async_read`, `async_write`, `async_wait`) to automatically suspend the running fiber and resume it once the operation completes.
 - **Usage**:
   ```cpp
@@ -79,7 +92,7 @@ The flagship integration feature. Pass `Omni::Fiber::AsioUseFiber` as the comple
   std::tuple<boost::system::error_code> res = co_await timer.async_wait(Omni::Fiber::AsioUseFiber);
   ```
 
-### 5. Cooperative Synchronization Primitives
+### 6. Cooperative Synchronization Primitives
 
 #### `Event`
 A cooperative notification event. A fiber can wait on the event, suspending itself until another fiber triggers `Set()`.
@@ -121,6 +134,7 @@ Below is a complete, working-style example demonstrating how to initialize the `
 #include <boost/asio.hpp>
 #include <omnifiber/Coroutine.h>
 #include <omnifiber/Fiber.h>
+#include <omnifiber/GetCurrentFiber.hpp>
 #include <omnifiber/ManagerDeclare.h>
 #include <omnifiber/ManagerDefine.h>
 #include <omnifiber/Asio.h>
@@ -136,7 +150,8 @@ Coroutine<void> WorkerFiber(int id, std::shared_ptr<Event> startSignal) {
     
     // Perform a cooperative sleep using Boost.Asio timer
     auto& io = boost::asio::query(boost::asio::system_executor(), boost::asio::execution::context); // or pass io_context
-    boost::asio::steady_timer timer(Manager::GetCurrentFiber()->_Manager.GetRunner()._Manager...); // Simplified context usage
+    Fiber& currentFiber = co_await GetCurrentFiber();
+    boost::asio::steady_timer timer(currentFiber.GetManager().GetRunner()._Manager...); // Simplified context usage
     // Real code usually passes io_context down or captures it.
 }
 
@@ -148,11 +163,11 @@ int main() {
     auto startSignal = std::make_shared<Event>();
 
     manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-        auto currentFiber = Manager::GetCurrentFiber();
+        Fiber& currentFiber = co_await GetCurrentFiber();
         std::cout << "[Root] Spawning worker fibers..." << std::endl;
 
-        auto worker1 = currentFiber->Spawn("worker1", [&]() { return WorkerFiber(1, startSignal); });
-        auto worker2 = currentFiber->Spawn("worker2", [&]() { return WorkerFiber(2, startSignal); });
+        auto worker1 = currentFiber.Spawn("worker1", [&]() { return WorkerFiber(1, startSignal); });
+        auto worker2 = currentFiber.Spawn("worker2", [&]() { return WorkerFiber(2, startSignal); });
 
         // Simulate some setup delay
         std::cout << "[Root] Setting up..." << std::endl;
@@ -162,8 +177,8 @@ int main() {
         startSignal->Set();
 
         // Join workers
-        co_await currentFiber->Join(worker1);
-        co_await currentFiber->Join(worker2);
+        co_await currentFiber.Join(worker1);
+        co_await currentFiber.Join(worker2);
 
         std::cout << "[Root] All workers finished!" << std::endl;
     });

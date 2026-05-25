@@ -3,18 +3,25 @@
 #include <cassert>
 #include <coroutine>
 #include <exception>
+#include <functional>
 #include <optional>
 #include <type_traits>
+#include <variant>
+
+#include "FiberPromise.hpp"
 
 namespace Omni {
 namespace Fiber {
 
 template <typename RetType> class Coroutine {
 private:
-  template <typename Impl> class PromiseBase {
+  template <typename Impl> class PromiseBase : public FiberPromise {
   public:
+    Fiber& GetFiber() override { return _CallerPromise.value().get().GetFiber(); }
+    Manager& GetManager() override { return _CallerPromise.value().get().GetManager(); }
+
     Coroutine get_return_object(this Impl& self) { return {std::coroutine_handle<Impl>::from_promise(self)}; }
-    std::suspend_never initial_suspend() const noexcept { return {}; }
+    std::suspend_always initial_suspend() const noexcept { return {}; }
     auto final_suspend() noexcept {
       struct FinalAwaiter {
         bool await_ready() noexcept { return false; }
@@ -29,37 +36,27 @@ private:
       };
       return FinalAwaiter{};
     }
-    void unhandled_exception() { _Exception.emplace(std::current_exception()); }
-
-    bool IsFinished() const noexcept { return _Exception.has_value(); }
+    void unhandled_exception() { _RetState = std::current_exception(); }
+    bool IsFinished() const noexcept { return _RetState.index() != 0; }
 
   protected:
-    friend class Coroutine;
-    std::optional<std::exception_ptr> _Exception;
+    using RetDataType = std::conditional_t<std::is_void_v<RetType>, bool, RetType>;
+    std::variant<std::monostate, std::exception_ptr, RetDataType> _RetState = std::monostate{};
     std::optional<std::coroutine_handle<>> _Caller;
+    std::optional<std::reference_wrapper<FiberPromise>> _CallerPromise;
   };
 
   class PromiseVoid final : public PromiseBase<PromiseVoid> {
   public:
-    void return_void() { _IsReturned = true; }
-
-    bool IsFinished() const noexcept { return PromiseBase<PromiseVoid>::IsFinished() || _IsReturned; }
-
-  private:
+    void return_void() { this->_RetState = true; }
     friend class Coroutine;
-    bool _IsReturned = false;
   };
 
   class PromiseNonVoid final : public PromiseBase<PromiseNonVoid> {
   public:
-    void return_value(RetType&& ret) { _ReturnValue.emplace(std::move(ret)); }
-
-    bool IsFinished() const noexcept { return PromiseBase<PromiseNonVoid>::IsFinished() || _ReturnValue.has_value(); }
-    RetType&& GetReturnValue() { return std::move(_ReturnValue.value()); }
-
-  private:
+    void return_value(RetType&& ret) { this->_RetState = std::move(ret); }
+    RetType&& GetReturnValue() { return std::move(std::get<2>(this->_RetState)); }
     friend class Coroutine;
-    std::optional<RetType> _ReturnValue;
   };
 
 public:
@@ -78,14 +75,17 @@ public:
   Coroutine& operator co_await() { return *this; }
 
   bool await_ready() const noexcept { return _Callee.promise().IsFinished(); }
-  template <typename T> void await_suspend(std::coroutine_handle<T> caller) noexcept {
-    _Callee.promise()._Caller.emplace(caller);
+  template <typename T> std::coroutine_handle<> await_suspend(std::coroutine_handle<T> caller) noexcept {
+    promise_type& promise = _Callee.promise();
+    promise._Caller.emplace(caller);
+    promise._CallerPromise.emplace(caller.promise());
+    return _Callee;
   }
   RetType await_resume() {
     promise_type& promise = _Callee.promise();
-    if (promise._Exception.has_value()) {
+    if (promise._RetState.index() == 1) {
       // This throws the exception directly into the caller's execution frame
-      std::rethrow_exception(promise._Exception.value());
+      std::rethrow_exception(std::get<std::exception_ptr>(promise._RetState));
     }
 
     if constexpr (std::is_void_v<RetType>) {

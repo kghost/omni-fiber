@@ -14,3 +14,9 @@ target_link_libraries(omnifiber_test_coroutine PRIVATE omnifiber GTest::gtest_ma
 target_compile_options(omnifiber_test_coroutine PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 target_link_options(omnifiber_test_coroutine PRIVATE -fsanitize=address)
 gtest_discover_tests(omnifiber_test_coroutine)
+
+add_executable(omnifiber_test_get_current_fiber test_get_current_fiber.cpp)
+target_link_libraries(omnifiber_test_get_current_fiber PRIVATE omnifiber GTest::gtest_main Boost::log Boost::thread)
+target_compile_options(omnifiber_test_get_current_fiber PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(omnifiber_test_get_current_fiber PRIVATE -fsanitize=address)
+gtest_discover_tests(omnifiber_test_get_current_fiber)
