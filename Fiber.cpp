@@ -5,7 +5,7 @@
 #include <optional>
 #include <utility>
 
-#include "FiberAwaitableAlwaysSuspend.hpp"
+#include "AwaitableAlwaysSuspend.hpp"
 #include "FiberException.hpp"
 #include "GetCurrentFiber.hpp"
 #include "Manager.hpp"
@@ -27,7 +27,7 @@ Coroutine<void> Fiber::Wait(std::function<bool()> until) {
     if (until()) {
       co_return;
     }
-    co_await FiberAwaitableAlwaysSuspend<SharedAwaitable>(_JoinAwaitContext);
+    co_await AwaitableAlwaysSuspend<SharedAwaitable>(_JoinAwaitContext);
   }
 }
 

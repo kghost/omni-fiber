@@ -152,7 +152,7 @@ private:
 
   OMNIFIBER_API Manager& GetManager() { return _Manager; }
   OMNIFIBER_API void Suspend(std::coroutine_handle<> caller);
-  OMNIFIBER_API void Resume(); // Called by Manager to schedule this fiber.
+  OMNIFIBER_API void Resume(); // Called by Manager to continue this fiber.
 
   OMNIFIBER_API void StartingYield(std::coroutine_handle<> caller);
   OMNIFIBER_API void Finishing();

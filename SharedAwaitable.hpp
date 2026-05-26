@@ -16,11 +16,9 @@ class SharedAwaitContext;
 // destroyed after the co_await expression is evaluated. Never hold it to an lvalue or a member variable.
 class SharedAwaitable {
 public:
-  using ContextType = SharedAwaitContext;
   using ContextStorage = std::weak_ptr<SharedAwaitContext>;
-  using ContextHandle = std::shared_ptr<SharedAwaitContext>;
 
-  static ContextHandle Get(ContextStorage& context);
+  static std::shared_ptr<SharedAwaitContext> Get(ContextStorage& context);
   static void Fire(ContextStorage& context);
 
 protected:
@@ -33,7 +31,7 @@ protected:
   SharedAwaitable& operator=(SharedAwaitable&&) = delete;
 
 public:
-  void Resume();
+  void Schedule();
 
   template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
     _Owner = caller.promise().GetFiber().shared_from_this();

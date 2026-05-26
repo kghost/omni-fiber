@@ -22,7 +22,7 @@ void SingleAwaitContext::RemoveFiberAwaitable(SingleAwaitable& awaitable) {
 void SingleAwaitContext::Fire() {
   if (_PendingAwaitable.has_value() && _State == FiberAwaitableState::Waiting) {
     _State = FiberAwaitableState::Notified;
-    _PendingAwaitable->get().Resume();
+    _PendingAwaitable->get().Schedule();
   }
 }
 

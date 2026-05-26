@@ -15,11 +15,9 @@ class SingleAwaitContext;
 // Optimized awaitable base class that only allows one fiber pending on it.
 class SingleAwaitable {
 public:
-  using ContextType = SingleAwaitContext;
   using ContextStorage = SingleAwaitContext;
-  using ContextHandle = SingleAwaitContext&;
 
-  static ContextHandle Get(ContextStorage& context);
+  static SingleAwaitContext& Get(ContextStorage& context);
   static void Fire(ContextStorage& context);
 
 protected:
@@ -32,7 +30,7 @@ protected:
   SingleAwaitable& operator=(SingleAwaitable&&) = delete;
 
 public:
-  void Resume();
+  void Schedule();
 
   template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
     _Owner = caller.promise().GetFiber().shared_from_this();
@@ -40,7 +38,7 @@ public:
   }
 
 private:
-  ContextHandle _Context;
+  SingleAwaitContext& _Context;
   std::optional<std::shared_ptr<Fiber>> _Owner;
 
   void DoAwaitSuspend(std::coroutine_handle<> caller);

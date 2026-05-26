@@ -19,7 +19,7 @@ void SharedAwaitContext::Fire() {
   for (auto& awaitable : _PendingSet) {
     if (awaitable.second == FiberAwaitableState::Waiting) {
       awaitable.second = FiberAwaitableState::Notified;
-      awaitable.first.get().Resume();
+      awaitable.first.get().Schedule();
     }
   }
 }

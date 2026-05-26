@@ -2,7 +2,7 @@
 
 #include <queue>
 
-#include "FiberAwaitableCustom.hpp"
+#include "AwaitableCustom.hpp"
 #include "SharedAwaitable.hpp"
 
 #include "shared.h"
@@ -24,8 +24,8 @@ public:
   void AwaitValue() {}
   bool AwaitReady() const { return !_Queue.empty(); }
 
-  OMNIFIBER_API FiberAwaitableCustom<EventQueue<Element>, SharedAwaitable> operator co_await() {
-    return FiberAwaitableCustom<EventQueue<Element>, SharedAwaitable>(_AwaitContext, *this);
+  OMNIFIBER_API AwaitableCustom<EventQueue<Element>, SharedAwaitable> operator co_await() {
+    return AwaitableCustom<EventQueue<Element>, SharedAwaitable>(_AwaitContext, *this);
   }
 
   OMNIFIBER_API bool IsEmpty() const { return _Queue.empty(); }

@@ -6,11 +6,11 @@
 namespace Omni {
 namespace Fiber {
 
-SharedAwaitable::ContextHandle SharedAwaitable::Get(ContextStorage& storage) {
+std::shared_ptr<SharedAwaitContext> SharedAwaitable::Get(ContextStorage& storage) {
   if (auto handle = storage.lock()) {
     return handle;
   } else {
-    auto newHandle = std::make_shared<ContextType>();
+    auto newHandle = std::make_shared<SharedAwaitContext>();
     storage = newHandle;
     return newHandle;
   }
@@ -29,7 +29,7 @@ SharedAwaitable::~SharedAwaitable() {
     _Context->RemoveFiberAwaitable(*this);
   }
 }
-void SharedAwaitable::Resume() { _Owner.value()->Schedule(); }
+void SharedAwaitable::Schedule() { _Owner.value()->Schedule(); }
 
 void SharedAwaitable::DoAwaitSuspend(std::coroutine_handle<> caller) {
   _Context->AddFiberAwaitable(*this);

@@ -3,7 +3,7 @@
 #include <optional>
 #include <utility>
 
-#include "FiberAwaitableCustom.hpp"
+#include "AwaitableCustom.hpp"
 #include "SingleAwaitContext.hpp"
 #include "SingleAwaitable.hpp"
 
@@ -45,8 +45,8 @@ public:
       SingleAwaitable::Fire(_Pipe._AwaitReadContext);
     }
 
-    FiberAwaitableCustom<Producer, SingleAwaitable> operator co_await() {
-      return FiberAwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
+    AwaitableCustom<Producer, SingleAwaitable> operator co_await() {
+      return AwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
     }
 
   private:
@@ -65,8 +65,8 @@ public:
       return ret;
     }
 
-    FiberAwaitableCustom<Consumer, SingleAwaitable> operator co_await() {
-      return FiberAwaitableCustom<Consumer, SingleAwaitable>(_Pipe._AwaitReadContext, *this);
+    AwaitableCustom<Consumer, SingleAwaitable> operator co_await() {
+      return AwaitableCustom<Consumer, SingleAwaitable>(_Pipe._AwaitReadContext, *this);
     }
 
   private:

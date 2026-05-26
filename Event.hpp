@@ -2,7 +2,7 @@
 
 #include <sys/epoll.h>
 
-#include "FiberAwaitableCustom.hpp"
+#include "AwaitableCustom.hpp"
 #include "SharedAwaitable.hpp"
 
 #include "shared.h"
@@ -26,8 +26,8 @@ public:
 
   bool AwaitReady() const { return _Fired; }
   void AwaitValue() {}
-  OMNIFIBER_API FiberAwaitableCustom<Event, SharedAwaitable> operator co_await() {
-    return FiberAwaitableCustom<Event, SharedAwaitable>(_AwaitContext, *this);
+  OMNIFIBER_API AwaitableCustom<Event, SharedAwaitable> operator co_await() {
+    return AwaitableCustom<Event, SharedAwaitable>(_AwaitContext, *this);
   }
 
 private:
