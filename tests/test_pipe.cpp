@@ -1,0 +1,248 @@
+#include <memory>
+#include <tuple>
+#include <utility>
+#include <vector>
+
+#include <boost/asio.hpp>
+#include <gtest/gtest.h>
+
+#include "Asio.hpp"
+#include "Coroutine.hpp"
+#include "Fiber.hpp"
+#include "GetCurrentFiber.hpp"
+#include "Manager.hpp"
+#include "Pipe.hpp"
+
+using namespace Omni::Fiber;
+
+namespace {
+
+void RunEventLoop(boost::asio::io_context& io) {
+  io.restart();
+  io.run();
+}
+
+} // namespace
+
+// 1. Test case: Initial state of a newly created Pipe
+TEST(PipeTest, InitialState) {
+  Pipe<int> pipe;
+  auto producer = pipe.GetProducer();
+  auto consumer = pipe.GetConsumer();
+
+  EXPECT_TRUE(producer.AwaitReady());
+  EXPECT_FALSE(consumer.AwaitReady());
+}
+
+// 2. Test case: Basic transmission of data without suspending (direct write & read)
+TEST(PipeTest, BasicPutAndGet) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  auto producer = pipe.GetProducer();
+  auto consumer = pipe.GetConsumer();
+
+  bool executed = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    producer.Put(42);
+    EXPECT_TRUE(consumer.AwaitReady());
+
+    auto [state, val] = co_await consumer;
+    EXPECT_EQ(state, Pipe<int>::PipeDataState::Data);
+    EXPECT_TRUE(val.has_value());
+    if (!val.has_value()) {
+      co_return;
+    }
+    EXPECT_EQ(*val, 42);
+
+    EXPECT_TRUE(producer.AwaitReady());
+    executed = true;
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(executed);
+}
+
+// 3. Test case: Basic close of pipe
+TEST(PipeTest, BasicClose) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  auto producer = pipe.GetProducer();
+  auto consumer = pipe.GetConsumer();
+
+  bool executed = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    producer.Close();
+    EXPECT_TRUE(consumer.AwaitReady());
+
+    auto [state, val] = co_await consumer;
+    EXPECT_EQ(state, Pipe<int>::PipeDataState::End);
+    EXPECT_FALSE(val.has_value());
+
+    executed = true;
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(executed);
+}
+
+// 4. Test case: Producer suspensions due to full buffer
+TEST(PipeTest, ProducerSuspension) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  auto producer = pipe.GetProducer();
+  auto consumer = pipe.GetConsumer();
+
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
+      sequence.push_back("prod_put_1");
+      producer.Put(1);
+
+      sequence.push_back("prod_await_2");
+      co_await producer;
+
+      sequence.push_back("prod_put_2");
+      producer.Put(2);
+
+      sequence.push_back("prod_done");
+      co_return;
+    });
+
+    auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
+      sequence.push_back("cons_read_1");
+      auto [state1, val1] = co_await consumer;
+      EXPECT_EQ(state1, Pipe<int>::PipeDataState::Data);
+      EXPECT_TRUE(val1.has_value());
+      if (!val1.has_value()) {
+        co_return;
+      }
+      EXPECT_EQ(*val1, 1);
+
+      sequence.push_back("cons_read_2");
+      auto [state2, val2] = co_await consumer;
+      EXPECT_EQ(state2, Pipe<int>::PipeDataState::Data);
+      EXPECT_TRUE(val2.has_value());
+      if (!val2.has_value()) {
+        co_return;
+      }
+      EXPECT_EQ(*val2, 2);
+
+      sequence.push_back("cons_done");
+      co_return;
+    });
+
+    co_await current.Join(producerFiber);
+    co_await current.Join(consumerFiber);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 7);
+  EXPECT_EQ(sequence[0], "prod_put_1");
+  EXPECT_EQ(sequence[1], "prod_await_2");
+  EXPECT_EQ(sequence[2], "cons_read_1");
+  EXPECT_EQ(sequence[3], "cons_read_2");
+  EXPECT_EQ(sequence[4], "prod_put_2");
+  EXPECT_EQ(sequence[5], "prod_done");
+  EXPECT_EQ(sequence[6], "cons_done");
+}
+
+// 5. Test case: Consumer suspensions due to empty buffer
+TEST(PipeTest, ConsumerSuspension) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  auto producer = pipe.GetProducer();
+  auto consumer = pipe.GetConsumer();
+
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
+      sequence.push_back("cons_read_1");
+      auto [state1, val1] = co_await consumer;
+      sequence.push_back("cons_got_1");
+      EXPECT_EQ(state1, Pipe<int>::PipeDataState::Data);
+      EXPECT_TRUE(val1.has_value());
+      if (!val1.has_value()) {
+        co_return;
+      }
+      EXPECT_EQ(*val1, 100);
+
+      sequence.push_back("cons_read_2");
+      auto [state2, val2] = co_await consumer;
+      sequence.push_back("cons_got_2");
+      EXPECT_EQ(state2, Pipe<int>::PipeDataState::End);
+      EXPECT_FALSE(val2.has_value());
+
+      sequence.push_back("cons_done");
+      co_return;
+    });
+
+    auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
+      sequence.push_back("prod_put_1");
+      producer.Put(100);
+
+      sequence.push_back("prod_await_close");
+      co_await producer;
+
+      sequence.push_back("prod_close");
+      producer.Close();
+
+      sequence.push_back("prod_done");
+      co_return;
+    });
+
+    co_await current.Join(consumerFiber);
+    co_await current.Join(producerFiber);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 9);
+  EXPECT_EQ(sequence[0], "cons_read_1");
+  EXPECT_EQ(sequence[1], "prod_put_1");
+  EXPECT_EQ(sequence[2], "prod_await_close");
+  EXPECT_EQ(sequence[3], "cons_got_1");
+  EXPECT_EQ(sequence[4], "cons_read_2");
+  EXPECT_EQ(sequence[5], "prod_close");
+  EXPECT_EQ(sequence[6], "prod_done");
+  EXPECT_EQ(sequence[7], "cons_got_2");
+  EXPECT_EQ(sequence[8], "cons_done");
+}
+
+// 6. Test case: Destruction safety
+TEST(PipeTest, DestructionSafety) {
+  auto pipePtr = std::make_unique<Pipe<int>>();
+  auto producer = pipePtr->GetProducer();
+
+  // Obtain an awaitable object from the producer, which creates a context
+  auto awaitable = producer.operator co_await();
+
+  // Destroy the pipe while the awaitable is still alive
+  pipePtr.reset();
+
+  EXPECT_EQ(pipePtr, nullptr);
+}
