@@ -1,20 +1,15 @@
 #pragma once
 
-#include <memory>
-
-#include "FiberAwaitable.hpp"
-
 #include "shared.h"
 
 namespace Omni {
 namespace Fiber {
 
-class FiberAwaitContext;
-
-class FiberAwaitableAlwaysSuspend final : public FiberAwaitable {
+template <typename BaseAwaitable> class FiberAwaitableAlwaysSuspend final : public BaseAwaitable {
 public:
-  OMNIFIBER_API explicit FiberAwaitableAlwaysSuspend(std::shared_ptr<FiberAwaitContext> context)
-      : FiberAwaitable(context) {}
+  using ContextType = typename BaseAwaitable::ContextType;
+
+  OMNIFIBER_API explicit FiberAwaitableAlwaysSuspend(BaseAwaitable::ContextStorage& storage) : BaseAwaitable(storage) {}
   OMNIFIBER_API ~FiberAwaitableAlwaysSuspend() {}
 
   bool await_ready() const noexcept { return false; }

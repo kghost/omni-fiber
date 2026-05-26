@@ -19,7 +19,7 @@ private:
   public:
     Fiber& GetFiber() override { return _CallerPromise.value().get().GetFiber(); }
 
-    Coroutine get_return_object(this Impl& self) { return {std::coroutine_handle<Impl>::from_promise(self)}; }
+    Coroutine get_return_object(this Impl& self) { return Coroutine{std::coroutine_handle<Impl>::from_promise(self)}; }
     std::suspend_always initial_suspend() const noexcept { return {}; }
     auto final_suspend() noexcept {
       struct FinalAwaiter {
@@ -60,7 +60,7 @@ private:
 
 public:
   using promise_type = std::conditional<std::is_void_v<RetType>, PromiseVoid, PromiseNonVoid>::type;
-  Coroutine(std::coroutine_handle<promise_type> callee) : _Callee(callee) {}
+  explicit Coroutine(std::coroutine_handle<promise_type> callee) : _Callee(callee) {}
   ~Coroutine() {
     assert(_Callee.promise().IsFinished()); // If hits, you probably forget to co_await a Coroutine.
     _Callee.destroy();

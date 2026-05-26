@@ -9,6 +9,7 @@
 #include "FiberException.hpp"
 #include "GetCurrentFiber.hpp"
 #include "Manager.hpp"
+#include "SharedAwaitContext.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -17,9 +18,7 @@ void Fiber::OnChildFinished(std::shared_ptr<Fiber> child) {
   assert(_Children.contains(child));
   _Children.erase(child);
   _FinishedChildren.insert(child);
-  if (auto awaitContext = _JoinAwaitContext.lock()) {
-    awaitContext->Fire();
-  }
+  SharedAwaitable::Fire(_JoinAwaitContext);
 }
 
 Coroutine<void> Fiber::Wait(std::function<bool()> until) {
@@ -28,7 +27,7 @@ Coroutine<void> Fiber::Wait(std::function<bool()> until) {
     if (until()) {
       co_return;
     }
-    co_await FiberAwaitableAlwaysSuspend{FiberAwaitContext::Get(_JoinAwaitContext)};
+    co_await FiberAwaitableAlwaysSuspend<SharedAwaitable>(_JoinAwaitContext);
   }
 }
 

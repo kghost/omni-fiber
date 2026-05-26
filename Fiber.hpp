@@ -14,9 +14,9 @@
 #include <boost/log/trivial.hpp>
 
 #include "Coroutine.hpp"
-#include "FiberAwaitContext.hpp"
 #include "FiberFinishNotifier.hpp"
 #include "FiberPromise.hpp"
+#include "SharedAwaitable.hpp"
 
 #include "shared.h"
 
@@ -24,6 +24,7 @@ namespace Omni {
 namespace Fiber {
 
 class Manager;
+class SingleAwaitable;
 
 class Fiber : public std::enable_shared_from_this<Fiber> {
 private:
@@ -119,7 +120,8 @@ public:
 
 private:
   friend class Manager;
-  friend class FiberAwaitable;
+  friend class SharedAwaitable;
+  friend class SingleAwaitable;
   friend boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);
 
   class ChildFiberFinishNotifier : public FiberFinishNotifier {
@@ -176,7 +178,7 @@ private:
   // Children management.
   std::set<std::shared_ptr<Fiber>> _Children;
   std::set<std::shared_ptr<Fiber>> _FinishedChildren;
-  std::weak_ptr<FiberAwaitContext> _JoinAwaitContext;
+  SharedAwaitable::ContextStorage _JoinAwaitContext;
 };
 
 boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);

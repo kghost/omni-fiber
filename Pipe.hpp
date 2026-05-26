@@ -1,12 +1,11 @@
 #pragma once
 
-#include <memory>
 #include <optional>
 #include <utility>
 
-#include "FiberAwaitContext.hpp"
-#include "FiberAwaitable.hpp"
 #include "FiberAwaitableCustom.hpp"
+#include "SingleAwaitContext.hpp"
+#include "SingleAwaitable.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -31,28 +30,23 @@ public:
   public:
     explicit Producer(Pipe& pipe) : _Pipe(pipe) {}
 
-    using AwaitResultType = void;
     bool AwaitReady() const { return !_Pipe._Data.has_value(); }
     void AwaitValue() {}
 
     void Put(DataType&& data) {
       assert(!_Pipe._Data.has_value());
       _Pipe._Data.emplace(PipeDataState::Data, std::move(data));
-      if (auto readContext = _Pipe._AwaitReadContext.lock()) {
-        readContext->Fire();
-      }
+      SingleAwaitable::Fire(_Pipe._AwaitReadContext);
     }
 
     void Close() {
       assert(!_Pipe._Data.has_value());
       _Pipe._Data.emplace(PipeDataState::End, std::nullopt);
-      if (auto readContext = _Pipe._AwaitReadContext.lock()) {
-        readContext->Fire();
-      }
+      SingleAwaitable::Fire(_Pipe._AwaitReadContext);
     }
 
-    FiberAwaitableCustom<Producer> operator co_await() {
-      return FiberAwaitableCustom<Producer>(FiberAwaitContext::Get(_Pipe._AwaitWriteContext), *this);
+    FiberAwaitableCustom<Producer, SingleAwaitable> operator co_await() {
+      return FiberAwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
     }
 
   private:
@@ -63,19 +57,16 @@ public:
   public:
     explicit Consumer(Pipe& pipe) : _Pipe(pipe) {}
 
-    using AwaitResultType = PipeDataType;
     bool AwaitReady() const { return _Pipe._Data.has_value(); }
     PipeDataType AwaitValue() {
       assert(_Pipe._Data.has_value());
       PipeDataType ret = std::move(std::exchange(_Pipe._Data, std::nullopt).value());
-      if (auto writeContext = _Pipe._AwaitWriteContext.lock()) {
-        writeContext->Fire();
-      }
+      SingleAwaitable::Fire(_Pipe._AwaitWriteContext);
       return ret;
     }
 
-    FiberAwaitableCustom<Consumer> operator co_await() {
-      return FiberAwaitableCustom<Consumer>(FiberAwaitContext::Get(_Pipe._AwaitReadContext), *this);
+    FiberAwaitableCustom<Consumer, SingleAwaitable> operator co_await() {
+      return FiberAwaitableCustom<Consumer, SingleAwaitable>(_Pipe._AwaitReadContext, *this);
     }
 
   private:
@@ -86,8 +77,8 @@ public:
   Consumer GetConsumer() { return Consumer(*this); }
 
 private:
-  std::weak_ptr<FiberAwaitContext> _AwaitReadContext;
-  std::weak_ptr<FiberAwaitContext> _AwaitWriteContext;
+  SingleAwaitable::ContextStorage _AwaitReadContext;
+  SingleAwaitable::ContextStorage _AwaitWriteContext;
   std::optional<PipeDataType> _Data;
 };
 

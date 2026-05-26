@@ -1,11 +1,9 @@
 #pragma once
 
-#include <memory>
 #include <sys/epoll.h>
 
-#include "FiberAwaitContext.hpp"
-#include "FiberAwaitable.hpp"
 #include "FiberAwaitableCustom.hpp"
+#include "SharedAwaitable.hpp"
 
 #include "shared.h"
 
@@ -23,20 +21,17 @@ public:
 
   OMNIFIBER_API void Fire() {
     _Fired = true;
-    if (auto awaitContext = _AwaitContext.lock()) {
-      awaitContext->Fire();
-    }
+    SharedAwaitable::Fire(_AwaitContext);
   }
 
-  using AwaitResultType = void;
   bool AwaitReady() const { return _Fired; }
   void AwaitValue() {}
-  OMNIFIBER_API FiberAwaitableCustom<Event> operator co_await() {
-    return FiberAwaitableCustom<Event>{FiberAwaitContext::Get(_AwaitContext), *this};
+  OMNIFIBER_API FiberAwaitableCustom<Event, SharedAwaitable> operator co_await() {
+    return FiberAwaitableCustom<Event, SharedAwaitable>(_AwaitContext, *this);
   }
 
 private:
-  std::weak_ptr<FiberAwaitContext> _AwaitContext;
+  SharedAwaitable::ContextStorage _AwaitContext;
   bool _Fired = false;
 };
 

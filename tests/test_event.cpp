@@ -215,7 +215,7 @@ TEST(EventTest, DestructionSafety) {
   auto eventPtr = std::make_unique<Event>();
 
   // Obtain an awaitable object from the event, which populates eventPtr->_AwaitContext
-  // and creates a FiberAwaitContext shared by the awaitable.
+  // and creates a SharedAwaitContext shared by the awaitable.
   auto awaitable = eventPtr->operator co_await();
 
   // Destroy the event while the awaitable is still alive.

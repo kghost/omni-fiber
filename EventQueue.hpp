@@ -2,8 +2,8 @@
 
 #include <queue>
 
-#include "FiberAwaitContext.hpp"
 #include "FiberAwaitableCustom.hpp"
+#include "SharedAwaitable.hpp"
 
 #include "shared.h"
 
@@ -21,28 +21,23 @@ public:
   EventQueue(EventQueue&&) = delete;
   EventQueue& operator=(EventQueue&&) = delete;
 
-  using AwaitResultType = void;
   void AwaitValue() {}
   bool AwaitReady() const { return !_Queue.empty(); }
 
-  OMNIFIBER_API FiberAwaitableCustom<EventQueue<Element>> operator co_await() {
-    return FiberAwaitableCustom<EventQueue<Element>>{FiberAwaitContext::Get(_AwaitContext), *this};
+  OMNIFIBER_API FiberAwaitableCustom<EventQueue<Element>, SharedAwaitable> operator co_await() {
+    return FiberAwaitableCustom<EventQueue<Element>, SharedAwaitable>(_AwaitContext, *this);
   }
 
   OMNIFIBER_API bool IsEmpty() const { return _Queue.empty(); }
 
   OMNIFIBER_API void Push(Element& element) {
     _Queue.push(element);
-    if (auto awaitContext = _AwaitContext.lock()) {
-      awaitContext->Fire();
-    }
+    SharedAwaitable::Fire(_AwaitContext);
   }
 
   OMNIFIBER_API void Push(Element&& element) {
     _Queue.emplace(std::forward<Element>(element));
-    if (auto awaitContext = _AwaitContext.lock()) {
-      awaitContext->Fire();
-    }
+    SharedAwaitable::Fire(_AwaitContext);
   }
 
   OMNIFIBER_API Element PopFront() {
@@ -53,7 +48,7 @@ public:
 
 private:
   std::queue<Element> _Queue;
-  std::weak_ptr<FiberAwaitContext> _AwaitContext;
+  SharedAwaitable::ContextStorage _AwaitContext;
 };
 
 } // namespace Fiber
