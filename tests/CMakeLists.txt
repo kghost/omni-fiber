@@ -33,4 +33,8 @@ target_compile_options(omnifiber_test_fiber_exceptions PRIVATE -fsanitize=addres
 target_link_options(omnifiber_test_fiber_exceptions PRIVATE -fsanitize=address)
 gtest_discover_tests(omnifiber_test_fiber_exceptions)
 
-
+add_executable(omnifiber_test_event test_event.cpp)
+target_link_libraries(omnifiber_test_event PRIVATE omnifiber GTest::gtest_main Boost::log Boost::thread)
+target_compile_options(omnifiber_test_event PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(omnifiber_test_event PRIVATE -fsanitize=address)
+gtest_discover_tests(omnifiber_test_event)
