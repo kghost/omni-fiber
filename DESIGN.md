@@ -204,12 +204,6 @@ A producer-consumer queue constructed on top of `Event` and `std::queue<T>`:
 
 Structured cooperative programming requires robust mechanisms for cancellation and exception safety:
 
-### Interruption Lifecycle
-1. When a control thread or a sibling fiber calls `fiber->Interrupt()`, it sets the fiber's `_Interrupted` flag to `true`.
-2. When the interrupted fiber reaches its next cooperative await/resume point (e.g., inside `FiberAwaitable::await_resume()`), it checks if `_Interrupted` is set.
-3. If set, it immediately throws a `Fiber::FiberInterrupted` exception.
-4. The exception unwinds the coroutine call stack, destroying local variables, closing resource handles, and triggering RAII cleanups.
-
 ### Unhandled Exception Handling
 - If an exception propagates completely out of the root coroutine's entry function, it is caught by `Promise::unhandled_exception()`.
 - `unhandled_exception()` captures the active exception pointer using `std::current_exception()` and calls `Fiber::SetException()`.

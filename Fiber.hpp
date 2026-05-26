@@ -7,16 +7,15 @@
 #include <memory>
 #include <optional>
 #include <set>
-#include <stdexcept>
 #include <type_traits>
 
 #include <boost/describe/enum.hpp>
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
 
-#include "Coroutine.h"
-#include "EventQueue.h"
-#include "FiberFinishNotifier.h"
+#include "Coroutine.hpp"
+#include "FiberAwaitContext.hpp"
+#include "FiberFinishNotifier.hpp"
 #include "FiberPromise.hpp"
 
 #include "shared.h"
@@ -110,17 +109,11 @@ public:
 
   OMNIFIBER_API const std::string& GetName() const { return _Name; }
   OMNIFIBER_API bool IsFinished() { return _State == State::Finished; }
-  OMNIFIBER_API void Interrupt() { _Interrupted = true; } // Insert FiberInterrupted exception at next suspend point.
   OMNIFIBER_API void Schedule();
   OMNIFIBER_API Coroutine<void> Join(std::shared_ptr<Fiber> child); // Join the child fiber.
   // Wait and join first exit child, then return the child.
   OMNIFIBER_API Coroutine<std::shared_ptr<Fiber>> WaitFor();
   OMNIFIBER_API Coroutine<void> Wait(std::function<bool()> until);
-
-  class FiberInterrupted : public std::runtime_error {
-  public:
-    FiberInterrupted() : std::runtime_error("Fiber Interrupted.") {}
-  };
 
   void DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent);
 
@@ -133,7 +126,7 @@ private:
   public:
     ChildFiberFinishNotifier(Fiber& parent) : _Parent(parent) {}
     ~ChildFiberFinishNotifier() override {}
-    void OnFiberFinished(std::shared_ptr<Fiber> fiber) override { _Parent._ChildSignals.Push(fiber); }
+    void OnFiberFinished(std::shared_ptr<Fiber> fiber) override { _Parent.OnChildFinished(fiber); }
 
   private:
     Fiber& _Parent;
@@ -162,6 +155,7 @@ private:
   OMNIFIBER_API void StartingYield(std::coroutine_handle<> caller);
   OMNIFIBER_API void Finishing();
   OMNIFIBER_API void SetException(std::exception_ptr eptr);
+  void OnChildFinished(std::shared_ptr<Fiber> child);
 
   Manager& _Manager;
   const std::string _Name;
@@ -172,16 +166,17 @@ private:
 
   // Continuation state
   std::optional<std::coroutine_handle<>> _Continuation;
-  bool _Interrupted = false;
 
   // Reture state
   std::optional<std::exception_ptr> _Exception;
 
   // This field must initialized later than _Continuation, becasue _Continuation is wroten when initializing Frame
   FiberFrame _OutMostFrame;
-  EventQueue<std::shared_ptr<Fiber>> _ChildSignals;
+
+  // Children management.
   std::set<std::shared_ptr<Fiber>> _Children;
   std::set<std::shared_ptr<Fiber>> _FinishedChildren;
+  std::weak_ptr<FiberAwaitContext> _JoinAwaitContext;
 };
 
 boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);

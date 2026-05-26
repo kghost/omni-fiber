@@ -1,36 +1,34 @@
-#include "Fiber.h"
+#include "Fiber.hpp"
 
 #include <boost/describe/enum_to_string.hpp>
 #include <cassert>
 #include <optional>
 #include <utility>
 
-#include "Event.h"
+#include "FiberAwaitableAlwaysSuspend.hpp"
 #include "FiberException.hpp"
 #include "GetCurrentFiber.hpp"
-#include "Manager.h"
+#include "Manager.hpp"
 
 namespace Omni {
 namespace Fiber {
 
-OMNIFIBER_API Coroutine<void> Fiber::Wait(std::function<bool()> until) {
-  assert(&co_await GetCurrentFiber() == this);
-  if (until()) {
-    co_return;
+void Fiber::OnChildFinished(std::shared_ptr<Fiber> child) {
+  assert(_Children.contains(child));
+  _Children.erase(child);
+  _FinishedChildren.insert(child);
+  if (auto awaitContext = _JoinAwaitContext.lock()) {
+    awaitContext->Fire();
   }
+}
+
+Coroutine<void> Fiber::Wait(std::function<bool()> until) {
+  assert(&co_await GetCurrentFiber() == this);
   while (true) {
-    while (!_ChildSignals.IsEmpty()) {
-      std::shared_ptr<Fiber> finished = _ChildSignals.PopFront();
-      assert(finished->IsFinished());
-      assert(_Children.contains(finished));
-      _Children.erase(finished);
-      _FinishedChildren.insert(finished);
-    }
     if (until()) {
       co_return;
     }
-    co_await _ChildSignals;
-    assert(!_ChildSignals.IsEmpty());
+    co_await FiberAwaitableAlwaysSuspend{FiberAwaitContext::Get(_JoinAwaitContext)};
   }
 }
 

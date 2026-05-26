@@ -1,11 +1,11 @@
-#include "Manager.h"
+#include "Manager.hpp"
 
 #include <boost/format.hpp>
 #include <boost/log/attributes/constant.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/trivial.hpp>
 
-#include "Fiber.h"
+#include "Fiber.hpp"
 #include "FiberException.hpp"
 
 namespace Omni {

@@ -3,14 +3,13 @@
 #include <memory>
 #include <string>
 
-#include "Asio.h"
-#include "Coroutine.h"
-#include "Event.h"
-#include "EventQueue.h"
-#include "Fiber.h"
+#include "Asio.hpp"
+#include "Coroutine.hpp"
+#include "EventQueue.hpp"
+#include "Fiber.hpp"
 #include "FiberException.hpp"
 #include "GetCurrentFiber.hpp"
-#include "Manager.h"
+#include "Manager.hpp"
 
 using namespace Omni::Fiber;
 

@@ -1,16 +1,15 @@
 #pragma once
 
 #include <optional>
-#include <type_traits>
 #include <utility>
 
 #include <boost/asio.hpp>
 
-#include "Coroutine.h"
-#include "Event.h"
-#include "Executor.h"
-#include "Fiber.h"
-#include "Manager.h"
+#include "Coroutine.hpp"
+#include "Event.hpp"
+#include "Executor.hpp"
+#include "Fiber.hpp"
+#include "Manager.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -43,17 +42,16 @@ template <typename... Results> struct async_result<Omni::Fiber::AsioUseFiberType
   template <typename Initiation, typename... InitArgs>
   static Omni::Fiber::Coroutine<std::tuple<Results...>> initiate(Initiation&& init, Omni::Fiber::AsioUseFiberType,
                                                                  InitArgs&&... initArgs) {
-    auto helper = [](std::decay_t<Initiation> init, std::decay_t<InitArgs>... initArgs)
-        -> Omni::Fiber::Coroutine<std::tuple<Results...>> {
-      boost::asio::cancellation_signal cancel;
+    auto helper = [](std::decay_t<Initiation> init,
+                     std::decay_t<InitArgs>... initArgs) -> Omni::Fiber::Coroutine<std::tuple<Results...>> {
       std::optional<std::tuple<Results...>> rets;
       Omni::Fiber::Event event;
-      init(boost::asio::bind_cancellation_slot(cancel.slot(),
-                                               [&rets, &event](Results... results) {
-                                                 rets.emplace(std::move(results)...);
-                                                 event.Set();
-                                               }),
-           std::move(initArgs)...);
+      init(
+          [&rets, &event](Results... results) {
+            rets.emplace(std::move(results)...);
+            event.Fire();
+          },
+          std::move(initArgs)...);
       co_await event;
       co_return std::move(rets.value());
     };

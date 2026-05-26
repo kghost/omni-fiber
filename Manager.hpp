@@ -8,11 +8,10 @@
 #include <string>
 #include <type_traits>
 
-#include "Coroutine.h"
-#include "EventQueue.h"
-#include "Executor.h"
-#include "Fiber.h"
-#include "FiberFinishNotifier.h"
+#include "Coroutine.hpp"
+#include "Executor.hpp"
+#include "Fiber.hpp"
+#include "FiberFinishNotifier.hpp"
 
 #include "shared.h"
 

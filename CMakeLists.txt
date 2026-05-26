@@ -23,8 +23,8 @@ find_package(Boost REQUIRED COMPONENTS log)
 
 # Source files
 set(SOURCES
-  Event.cpp
   Fiber.cpp
+  FiberAwaitContext.cpp
   FiberAwaitable.cpp
   Manager.cpp
 )
@@ -47,16 +47,16 @@ target_include_directories(omnifiber
 # Compile definitions
 target_compile_definitions(omnifiber
   PRIVATE
-    OMNIFIBER_EXPORTS
+  OMNIFIBER_EXPORTS
 )
 
 # Link dependencies
 target_link_libraries(omnifiber
   PUBLIC
-    Boost::boost
+  Boost::boost
   PRIVATE
-    Boost::log
-    Boost::thread
+  Boost::log
+  Boost::thread
 )
 
 # Target properties
@@ -87,16 +87,16 @@ if(NOT OMNIFIBER_INTERNAL)
   )
 
   install(FILES
-    Asio.h
-    Coroutine.h
-    Event.h
-    EventQueue.h
-    Executor.h
-    Fiber.h
-    FiberAwaitable.h
-    FiberFinishNotifier.h
+    Asio.hpp
+    Coroutine.hpp
+    Event.hpp
+    EventQueue.hpp
+    Executor.hpp
+    Fiber.hpp
+    FiberAwaitable.hpp
+    FiberFinishNotifier.hpp
     GetCurrentFiber.hpp
-    Manager.h
+    Manager.hpp
     shared.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omnifiber
   )

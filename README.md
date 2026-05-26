@@ -11,7 +11,6 @@
 - **Pluggable Executors**: Decoupled scheduler logic running on an abstract `Executor` interface.
 - **Boost.Asio Integration**: Built-in `AsioExecutor` and custom completion token `AsioUseFiber` to orchestrate fibers directly within a Boost.Asio event loop (`boost::asio::io_context`).
 - **Cooperative Sync Primitives**: Awaitable synchronization tools like `Event` and `EventQueue<T>` that yield execution instead of blocking threads.
-- **Graceful Interruption**: Cooperatively interrupt running fibers with exception propagation (`FiberInterrupted`).
 
 ---
 
@@ -44,10 +43,6 @@ Represents an independent cooperative thread of execution.
 - **Joining**: A parent fiber can wait for a child fiber using `Join`:
   ```cpp
   co_await parent->Join(child);
-  ```
-- **Interruption**: Forcefully mark a fiber as interrupted.
-  ```cpp
-  child->Interrupt(); // Throws FiberInterrupted upon next suspension/resume
   ```
 
 ### 3. Manager (`Manager`)

@@ -4,13 +4,13 @@
 #include <string>
 #include <vector>
 
-#include "Asio.h"
-#include "Coroutine.h"
-#include "Event.h"
-#include "EventQueue.h"
-#include "Fiber.h"
+#include "Asio.hpp"
+#include "Coroutine.hpp"
+#include "Event.hpp"
+#include "EventQueue.hpp"
+#include "Fiber.hpp"
 #include "GetCurrentFiber.hpp"
-#include "Manager.h"
+#include "Manager.hpp"
 
 using namespace Omni::Fiber;
 
@@ -128,7 +128,7 @@ TEST(FiberTest, CooperativeEvent) {
     auto producer = current.Spawn("producer", [&]() -> Coroutine<void> {
       sequence.push_back("producer_running");
       EXPECT_FALSE(consumerFinished);
-      startEvent.Set();
+      startEvent.Fire();
       sequence.push_back("producer_signaled");
       producerFinished = true;
       co_return;
@@ -193,48 +193,6 @@ TEST(FiberTest, CooperativeEventQueue) {
   EXPECT_EQ(received[2], 30);
 }
 
-// 6. Test Fiber Interruption
-TEST(FiberTest, FiberInterruption) {
-  boost::asio::io_context io;
-  AsioExecutor executor(io);
-  Manager manager(executor);
-
-  Event blockEvent;
-  bool caughtInterruption = false;
-  bool childFinishedGracefully = false;
-
-  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
-
-    auto child = current.Spawn("child", [&]() -> Coroutine<void> {
-      try {
-        co_await blockEvent; // Will suspend forever unless interrupted
-        childFinishedGracefully = true;
-      } catch (const Fiber::FiberInterrupted&) {
-        caughtInterruption = true;
-      }
-      co_return;
-    });
-
-    // Spawn an interrupter
-    auto interrupter = current.Spawn("interrupter", [&, child]() -> Coroutine<void> {
-      child->Interrupt();
-      // Reschedule the child to process the interruption
-      child->Schedule();
-      co_return;
-    });
-
-    co_await current.Join(child);
-    co_await current.Join(interrupter);
-    co_return;
-  });
-
-  RunEventLoop(io);
-
-  EXPECT_TRUE(caughtInterruption);
-  EXPECT_FALSE(childFinishedGracefully);
-}
-
 // 7. Test WaitFor basic functionality (first to exit)
 TEST(FiberTest, WaitForBasic) {
   boost::asio::io_context io;
@@ -260,14 +218,14 @@ TEST(FiberTest, WaitForBasic) {
     });
 
     // Make child2 finish first
-    child2Event.Set();
+    child2Event.Fire();
 
     // Since child2 is finished, WaitFor should return child2
     auto firstFinished = co_await current.WaitFor();
     finishedOrder.push_back(firstFinished);
 
     // Make child1 finish second
-    child1Event.Set();
+    child1Event.Fire();
 
     std::shared_ptr<Fiber> secondFinished = co_await current.WaitFor();
     finishedOrder.push_back(secondFinished);
@@ -293,13 +251,16 @@ TEST(FiberTest, WaitForAlreadyFinished) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     Fiber& current = co_await GetCurrentFiber();
 
-    Event resumeEvent;
+    Event resumeEvent1;
+    Event resumeEvent2;
     auto child = current.Spawn("early_bird", [&]() -> Coroutine<void> {
-      resumeEvent.Set();
+      resumeEvent1.Fire();
+      resumeEvent2.Fire();
       co_return;
     });
 
-    co_await resumeEvent;
+    co_await resumeEvent1;
+    co_await resumeEvent2;
 
     // At this point, child is fully finished.
     // WaitFor should return immediately.
@@ -325,14 +286,14 @@ TEST(FiberTest, WaitForMultipleAlreadyFinished) {
 
     Event resumeEvent1;
     auto child1 = current.Spawn("first", [&]() -> Coroutine<void> {
-      resumeEvent1.Set();
+      resumeEvent1.Fire();
       co_return;
     });
     co_await resumeEvent1;
 
     Event resumeEvent2;
     auto child2 = current.Spawn("second", [&]() -> Coroutine<void> {
-      resumeEvent2.Set();
+      resumeEvent2.Fire();
       co_return;
     });
     co_await resumeEvent2;
@@ -378,10 +339,10 @@ TEST(FiberTest, JoinInterleavedSignalLossBug) {
     auto child3 = current.Spawn("child3", [&]() -> Coroutine<void> { co_return; });
 
     // Make child1 finish first
-    event1.Set();
+    event1.Fire();
 
     // Make child2 finish second
-    event2.Set();
+    event2.Fire();
 
     // Now parent calls Join(child2).
     // Join(child2) will pop child1 (finished first) and must not discard it!

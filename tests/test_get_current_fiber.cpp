@@ -4,11 +4,11 @@
 #include <boost/asio.hpp>
 #include <gtest/gtest.h>
 
-#include "Asio.h"
-#include "Coroutine.h"
-#include "Fiber.h"
+#include "Asio.hpp"
+#include "Coroutine.hpp"
+#include "Fiber.hpp"
 #include "GetCurrentFiber.hpp"
-#include "Manager.h"
+#include "Manager.hpp"
 
 using namespace Omni::Fiber;
 

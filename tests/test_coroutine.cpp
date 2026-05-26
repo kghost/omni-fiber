@@ -4,12 +4,12 @@
 #include <boost/asio.hpp>
 #include <gtest/gtest.h>
 
-#include "Asio.h"
-#include "Coroutine.h"
-#include "Event.h"
-#include "Fiber.h"
+#include "Asio.hpp"
+#include "Coroutine.hpp"
+#include "Event.hpp"
+#include "Fiber.hpp"
 #include "GetCurrentFiber.hpp"
-#include "Manager.h"
+#include "Manager.hpp"
 
 using namespace Omni::Fiber;
 
@@ -179,7 +179,7 @@ TEST(CoroutineTest, ThreeLevelsWithCooperativeSuspend) {
 
     auto signaller = current.Spawn("signaller", [&]() -> Coroutine<void> {
       sequence.push_back("signaller: Signaling event");
-      event.Set();
+      event.Fire();
       co_return;
     });
 
