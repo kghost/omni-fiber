@@ -13,7 +13,7 @@
 namespace Omni {
 namespace Fiber {
 
-template <typename RetType> class Coroutine {
+template <typename RetType> class [[nodiscard]] Coroutine {
 private:
   template <typename Impl> class PromiseBase : public FiberPromise {
   public:

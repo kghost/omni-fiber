@@ -16,7 +16,14 @@ Manager::Manager(Executor& executor) : _Executor(executor) {
                                      (boost::format("%1%(%2%)") % typeid(*this).name() % this).str()));
 }
 
-Manager::~Manager() { assert(_RootFiber->IsFinished()); }
+Manager::~Manager() {
+#ifndef NDEBUG
+  if (!_RootFiber->IsFinished()) {
+    DumpAllFibers();
+  }
+#endif
+  assert(_RootFiber->IsFinished());
+}
 
 void Manager::Schedule(std::shared_ptr<Fiber> fiber) {
   _ReadyQueue.push(fiber);
