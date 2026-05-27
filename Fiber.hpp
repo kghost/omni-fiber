@@ -96,7 +96,7 @@ private:
 public:
   template <typename CoroutineFunction>
     requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
-  std::shared_ptr<Fiber> Spawn(std::string&& name, CoroutineFunction&& function) {
+  std::shared_ptr<Fiber> Spawn(std::string name, CoroutineFunction&& function) {
     assert(std::ranges::none_of(_Children, [&](auto& e) { return e->GetName() == name; }));
     auto child = std::shared_ptr<Fiber>(
         new Fiber(_Manager, std::move(name), _ChildFiberFinishNotifier, std::forward<CoroutineFunction>(function)));
