@@ -42,7 +42,7 @@ void Manager::Run() {
   }
 
   if (_RootFiber->IsFinished() && _RootFiber->_Exception.has_value()) {
-    throw FiberException{.Fiber = _RootFiber, .InnerException = _RootFiber->_Exception.value()};
+    throw FiberException{._Fiber = _RootFiber, ._InnerException = _RootFiber->_Exception.value()};
   }
 }
 

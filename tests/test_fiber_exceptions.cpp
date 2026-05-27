@@ -58,9 +58,9 @@ TEST(FiberExceptionTest, ChildExceptionPropagatesToJoin) {
       co_await current.Join(child);
     } catch (const FiberException& e) {
       exceptionCaught = true;
-      EXPECT_EQ(e.Fiber, child);
+      EXPECT_EQ(e._Fiber, child);
       try {
-        std::rethrow_exception(e.InnerException);
+        std::rethrow_exception(e._InnerException);
       } catch (const std::runtime_error& inner) {
         EXPECT_STREQ(inner.what(), "Test exception in child");
       } catch (...) {
@@ -97,9 +97,9 @@ TEST(FiberExceptionTest, ChildExceptionPropagatesToWaitFor) {
       co_await current.WaitFor();
     } catch (const FiberException& e) {
       exceptionCaught = true;
-      EXPECT_EQ(e.Fiber, child);
+      EXPECT_EQ(e._Fiber, child);
       try {
-        std::rethrow_exception(e.InnerException);
+        std::rethrow_exception(e._InnerException);
       } catch (const std::runtime_error& inner) {
         EXPECT_STREQ(inner.what(), "Test exception in child for WaitFor");
       } catch (...) {
@@ -132,9 +132,9 @@ TEST(FiberExceptionTest, RootExceptionPropagatesToManagerRun) {
     RunEventLoop(io);
   } catch (const FiberException& e) {
     exceptionCaught = true;
-    EXPECT_EQ(e.Fiber->GetName(), "root");
+    EXPECT_EQ(e._Fiber->GetName(), "root");
     try {
-      std::rethrow_exception(e.InnerException);
+      std::rethrow_exception(e._InnerException);
     } catch (const std::runtime_error& inner) {
       EXPECT_STREQ(inner.what(), "Test exception in root");
     } catch (...) {
@@ -163,9 +163,9 @@ TEST(FiberExceptionTest, DeepCoroutineStackException) {
     RunEventLoop(io);
   } catch (const FiberException& e) {
     exceptionCaught = true;
-    EXPECT_EQ(e.Fiber->GetName(), "root");
+    EXPECT_EQ(e._Fiber->GetName(), "root");
     try {
-      std::rethrow_exception(e.InnerException);
+      std::rethrow_exception(e._InnerException);
     } catch (const std::runtime_error& inner) {
       EXPECT_STREQ(inner.what(), "Exception from deep coroutine stack");
     } catch (...) {
@@ -212,17 +212,17 @@ TEST(FiberExceptionTest, NestedExceptionPropagation) {
     RunEventLoop(io);
   } catch (const FiberException& e) {
     exceptionCaught = true;
-    EXPECT_EQ(e.Fiber->GetName(), "root");
+    EXPECT_EQ(e._Fiber->GetName(), "root");
     try {
-      std::rethrow_exception(e.InnerException);
+      std::rethrow_exception(e._InnerException);
     } catch (const FiberException& childException) {
-      EXPECT_EQ(childException.Fiber->GetName(), "child");
+      EXPECT_EQ(childException._Fiber->GetName(), "child");
       try {
-        std::rethrow_exception(childException.InnerException);
+        std::rethrow_exception(childException._InnerException);
       } catch (const FiberException& grandchildException) {
-        EXPECT_EQ(grandchildException.Fiber->GetName(), "grandchild");
+        EXPECT_EQ(grandchildException._Fiber->GetName(), "grandchild");
         try {
-          std::rethrow_exception(grandchildException.InnerException);
+          std::rethrow_exception(grandchildException._InnerException);
         } catch (const std::runtime_error& inner) {
           EXPECT_STREQ(inner.what(), "Grandchild error");
         } catch (...) {
@@ -262,7 +262,7 @@ TEST(FiberExceptionTest, CaughtExceptionDoesNotPropagate) {
       co_await current.Join(child);
     } catch (const FiberException& e) {
       exceptionCaught = true;
-      EXPECT_EQ(e.Fiber, child);
+      EXPECT_EQ(e._Fiber, child);
     }
 
     parentCompleted = true;

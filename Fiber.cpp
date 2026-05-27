@@ -36,7 +36,7 @@ Coroutine<void> Fiber::Join(std::shared_ptr<Fiber> child) {
   co_await Wait([&] { return _FinishedChildren.contains(child); });
   _FinishedChildren.erase(child);
   if (child->_Exception.has_value()) {
-    throw FiberException{.Fiber = child, .InnerException = child->_Exception.value()};
+    throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
   }
   co_return;
 }
@@ -48,7 +48,7 @@ Coroutine<std::shared_ptr<Fiber>> Fiber::WaitFor() {
   auto ret = *it;
   _FinishedChildren.erase(it);
   if (ret->_Exception.has_value()) {
-    throw FiberException{.Fiber = ret, .InnerException = ret->_Exception.value()};
+    throw FiberException{._Fiber = ret, ._InnerException = ret->_Exception.value()};
   }
   co_return ret;
 }

@@ -10,8 +10,8 @@ class Fiber;
 
 class FiberException {
 public:
-  std::shared_ptr<Fiber> Fiber;
-  std::exception_ptr InnerException;
+  std::shared_ptr<Fiber> _Fiber;
+  std::exception_ptr _InnerException;
 };
 
 } // namespace Fiber

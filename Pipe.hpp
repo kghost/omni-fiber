@@ -3,6 +3,9 @@
 #include <optional>
 #include <utility>
 
+#include <boost/log/common.hpp>
+#include <boost/log/trivial.hpp>
+
 #include "AwaitableCustom.hpp"
 #include "SingleAwaitContext.hpp"
 #include "SingleAwaitable.hpp"
@@ -30,6 +33,11 @@ public:
   public:
     explicit Producer(Pipe& pipe) : _Pipe(pipe) {}
 
+    Producer(Producer&) = delete;
+    Producer& operator=(Producer&) = delete;
+    Producer(Producer&&) = delete;
+    Producer& operator=(Producer&&) = delete;
+
     bool AwaitReady() const { return !_Pipe._Data.has_value(); }
     void AwaitValue() {}
 
@@ -54,6 +62,12 @@ public:
   class Consumer {
   public:
     explicit Consumer(Pipe& pipe) : _Pipe(pipe) {}
+    ~Consumer() {}
+
+    Consumer(Consumer&) = delete;
+    Consumer& operator=(Consumer&) = delete;
+    Consumer(Consumer&&) = delete;
+    Consumer& operator=(Consumer&&) = delete;
 
     bool AwaitReady() const { return _Pipe._Data.has_value(); }
     PipeDataType AwaitValue() {
