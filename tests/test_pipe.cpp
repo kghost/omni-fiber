@@ -47,19 +47,30 @@ TEST(PipeTest, BasicPutAndGet) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    producer.Put(42);
-    EXPECT_TRUE(consumer.AwaitReady());
+    Fiber& current = co_await GetCurrentFiber();
 
-    auto [state, val] = co_await consumer;
-    EXPECT_EQ(state, Pipe<int>::PipeDataState::Data);
-    EXPECT_TRUE(val.has_value());
-    if (!val.has_value()) {
+    auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
+      EXPECT_TRUE(producer.AwaitReady());
+      co_await producer.Put(42);
+      EXPECT_TRUE(producer.AwaitReady());
+      executed = true;
       co_return;
-    }
-    EXPECT_EQ(*val, 42);
+    });
 
-    EXPECT_TRUE(producer.AwaitReady());
-    executed = true;
+    auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
+      EXPECT_TRUE(consumer.AwaitReady());
+      auto [state, val] = co_await consumer;
+      EXPECT_EQ(state, Pipe<int>::PipeDataState::Data);
+      EXPECT_TRUE(val.has_value());
+      if (!val.has_value()) {
+        co_return;
+      }
+      EXPECT_EQ(*val, 42);
+      co_return;
+    });
+
+    co_await current.Join(producerFiber);
+    co_await current.Join(consumerFiber);
     co_return;
   });
 
@@ -80,14 +91,24 @@ TEST(PipeTest, BasicClose) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    producer.Close();
-    EXPECT_TRUE(consumer.AwaitReady());
+    Fiber& current = co_await GetCurrentFiber();
 
-    auto [state, val] = co_await consumer;
-    EXPECT_EQ(state, Pipe<int>::PipeDataState::End);
-    EXPECT_FALSE(val.has_value());
+    auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
+      co_await producer.Close();
+      executed = true;
+      co_return;
+    });
 
-    executed = true;
+    auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
+      EXPECT_TRUE(consumer.AwaitReady());
+      auto [state, val] = co_await consumer;
+      EXPECT_EQ(state, Pipe<int>::PipeDataState::End);
+      EXPECT_FALSE(val.has_value());
+      co_return;
+    });
+
+    co_await current.Join(producerFiber);
+    co_await current.Join(consumerFiber);
     co_return;
   });
 
@@ -112,13 +133,10 @@ TEST(PipeTest, ProducerSuspension) {
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       sequence.push_back("prod_put_1");
-      producer.Put(1);
-
-      sequence.push_back("prod_await_2");
-      co_await producer;
+      co_await producer.Put(1);
 
       sequence.push_back("prod_put_2");
-      producer.Put(2);
+      co_await producer.Put(2);
 
       sequence.push_back("prod_done");
       co_return;
@@ -154,14 +172,13 @@ TEST(PipeTest, ProducerSuspension) {
 
   RunEventLoop(io);
 
-  ASSERT_EQ(sequence.size(), 7);
+  ASSERT_EQ(sequence.size(), 6);
   EXPECT_EQ(sequence[0], "prod_put_1");
-  EXPECT_EQ(sequence[1], "prod_await_2");
-  EXPECT_EQ(sequence[2], "cons_read_1");
-  EXPECT_EQ(sequence[3], "cons_read_2");
-  EXPECT_EQ(sequence[4], "prod_put_2");
+  EXPECT_EQ(sequence[1], "cons_read_1");
+  EXPECT_EQ(sequence[2], "cons_read_2");
+  EXPECT_EQ(sequence[3], "prod_put_2");
+  EXPECT_EQ(sequence[4], "cons_done");
   EXPECT_EQ(sequence[5], "prod_done");
-  EXPECT_EQ(sequence[6], "cons_done");
 }
 
 // 5. Test case: Consumer suspensions due to empty buffer
@@ -202,13 +219,10 @@ TEST(PipeTest, ConsumerSuspension) {
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       sequence.push_back("prod_put_1");
-      producer.Put(100);
-
-      sequence.push_back("prod_await_close");
-      co_await producer;
+      co_await producer.Put(100);
 
       sequence.push_back("prod_close");
-      producer.Close();
+      co_await producer.Close();
 
       sequence.push_back("prod_done");
       co_return;
@@ -221,16 +235,15 @@ TEST(PipeTest, ConsumerSuspension) {
 
   RunEventLoop(io);
 
-  ASSERT_EQ(sequence.size(), 9);
+  ASSERT_EQ(sequence.size(), 8);
   EXPECT_EQ(sequence[0], "cons_read_1");
   EXPECT_EQ(sequence[1], "prod_put_1");
-  EXPECT_EQ(sequence[2], "prod_await_close");
-  EXPECT_EQ(sequence[3], "cons_got_1");
-  EXPECT_EQ(sequence[4], "cons_read_2");
-  EXPECT_EQ(sequence[5], "prod_close");
-  EXPECT_EQ(sequence[6], "prod_done");
-  EXPECT_EQ(sequence[7], "cons_got_2");
-  EXPECT_EQ(sequence[8], "cons_done");
+  EXPECT_EQ(sequence[2], "cons_got_1");
+  EXPECT_EQ(sequence[3], "cons_read_2");
+  EXPECT_EQ(sequence[4], "prod_close");
+  EXPECT_EQ(sequence[5], "cons_got_2");
+  EXPECT_EQ(sequence[6], "cons_done");
+  EXPECT_EQ(sequence[7], "prod_done");
 }
 
 // 6. Test case: Destruction safety
@@ -239,10 +252,54 @@ TEST(PipeTest, DestructionSafety) {
   auto producer = pipePtr->GetProducer();
 
   // Obtain an awaitable object from the producer, which creates a context
-  auto awaitable = producer.operator co_await();
+  auto awaitable = producer.Put(42);
 
   // Destroy the pipe while the awaitable is still alive
   pipePtr.reset();
 
   EXPECT_EQ(pipePtr, nullptr);
+}
+
+// 7. Test case: Pipe supports move-only objects
+TEST(PipeTest, MoveOnlyObject) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<std::unique_ptr<int>> pipe;
+  auto producer = pipe.GetProducer();
+  auto consumer = pipe.GetConsumer();
+
+  bool executed = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
+      auto data = std::make_unique<int>(1337);
+      co_await producer.Put(std::move(data));
+      executed = true;
+      co_return;
+    });
+
+    auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
+      auto [state, val] = co_await consumer;
+      EXPECT_EQ(state, Pipe<std::unique_ptr<int>>::PipeDataState::Data);
+      EXPECT_TRUE(val.has_value());
+      if (val.has_value()) {
+        EXPECT_NE(*val, nullptr);
+        if (*val != nullptr) {
+          EXPECT_EQ(**val, 1337);
+        }
+      }
+      co_return;
+    });
+
+    co_await current.Join(producerFiber);
+    co_await current.Join(consumerFiber);
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(executed);
 }

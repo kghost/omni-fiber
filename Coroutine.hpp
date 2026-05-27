@@ -3,10 +3,10 @@
 #include <cassert>
 #include <coroutine>
 #include <exception>
+#include <expected>
 #include <functional>
 #include <optional>
 #include <type_traits>
-#include <variant>
 
 #include "FiberPromise.hpp"
 
@@ -35,26 +35,24 @@ private:
       };
       return FinalAwaiter{};
     }
-    void unhandled_exception() { _RetState = std::current_exception(); }
-    bool IsFinished() const noexcept { return _RetState.index() != 0; }
+    void unhandled_exception() { _RetState = std::unexpected(std::current_exception()); }
+    bool IsFinished() const noexcept { return _RetState.has_value(); }
 
   protected:
-    using RetDataType = std::conditional_t<std::is_void_v<RetType>, bool, RetType>;
-    std::variant<std::monostate, std::exception_ptr, RetDataType> _RetState = std::monostate{};
+    std::optional<std::expected<RetType, std::exception_ptr>> _RetState;
     std::optional<std::coroutine_handle<>> _Caller;
     std::optional<std::reference_wrapper<FiberPromise>> _CallerPromise;
   };
 
   class PromiseVoid final : public PromiseBase<PromiseVoid> {
   public:
-    void return_void() { this->_RetState = true; }
+    void return_void() { this->_RetState.emplace(); }
     friend class Coroutine;
   };
 
   class PromiseNonVoid final : public PromiseBase<PromiseNonVoid> {
   public:
-    void return_value(RetType&& ret) { this->_RetState = std::move(ret); }
-    RetType&& GetReturnValue() { return std::move(std::get<2>(this->_RetState)); }
+    template <typename T> void return_value(T&& ret) { this->_RetState = std::forward<T>(ret); }
     friend class Coroutine;
   };
 
@@ -62,7 +60,7 @@ public:
   using promise_type = std::conditional<std::is_void_v<RetType>, PromiseVoid, PromiseNonVoid>::type;
   explicit Coroutine(std::coroutine_handle<promise_type> callee) : _Callee(callee) {}
   ~Coroutine() {
-    assert(_Callee.promise().IsFinished()); // If hits, you probably forget to co_await a Coroutine.
+    assert(_Callee.promise().IsFinished() && "you probably forgot to co_await a Coroutine.");
     _Callee.destroy();
   }
 
@@ -82,15 +80,15 @@ public:
   }
   RetType await_resume() {
     promise_type& promise = _Callee.promise();
-    if (promise._RetState.index() == 1) {
-      // This throws the exception directly into the caller's execution frame
-      std::rethrow_exception(std::get<std::exception_ptr>(promise._RetState));
-    }
-
-    if constexpr (std::is_void_v<RetType>) {
-      return;
+    auto& ret = promise._RetState.value();
+    if (ret.has_value()) {
+      if constexpr (std::is_void_v<RetType>) {
+        return;
+      } else {
+        return std::move(ret.value());
+      }
     } else {
-      return _Callee.promise().GetReturnValue();
+      std::rethrow_exception(ret.error());
     }
   }
 

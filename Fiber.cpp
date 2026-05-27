@@ -53,6 +53,13 @@ Coroutine<std::shared_ptr<Fiber>> Fiber::WaitFor() {
   co_return ret;
 }
 
+Coroutine<void> Fiber::WaitAll() {
+  while (!(_Children.empty() && _FinishedChildren.empty())) {
+    co_await WaitFor();
+  }
+  co_return;
+}
+
 void Fiber::Schedule() {
   assert(_State == State::Suspended);
   _State = State::Ready;

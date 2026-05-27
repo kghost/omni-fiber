@@ -55,21 +55,21 @@ Coroutine<int> Level1Value(int value) {
 }
 
 // 3. Helper Coroutines for 3-Level Cooperative Suspension
-Coroutine<void> Level3Suspend(std::vector<std::string>& sequence, Event& event) {
+Coroutine<void> Level3Suspend(std::vector<std::string>& sequence, Event<>& event) {
   sequence.push_back("Level3Suspend: Awaiting event");
   co_await event;
   sequence.push_back("Level3Suspend: Event signaled");
   co_return;
 }
 
-Coroutine<void> Level2Suspend(std::vector<std::string>& sequence, Event& event) {
+Coroutine<void> Level2Suspend(std::vector<std::string>& sequence, Event<>& event) {
   sequence.push_back("Level2Suspend: Awaiting Level3");
   co_await Level3Suspend(sequence, event);
   sequence.push_back("Level2Suspend: Level3 returned");
   co_return;
 }
 
-Coroutine<void> Level1Suspend(std::vector<std::string>& sequence, Event& event) {
+Coroutine<void> Level1Suspend(std::vector<std::string>& sequence, Event<>& event) {
   sequence.push_back("Level1Suspend: Awaiting Level2");
   co_await Level2Suspend(sequence, event);
   sequence.push_back("Level1Suspend: Level2 returned");

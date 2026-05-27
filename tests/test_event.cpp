@@ -212,7 +212,7 @@ TEST(EventTest, MultipleFires) {
 
 // 7. Test case: Safe destruction of Event when there is a live awaitable holding a reference to the context
 TEST(EventTest, DestructionSafety) {
-  auto eventPtr = std::make_unique<Event>();
+  auto eventPtr = std::make_unique<Event<>>();
 
   // Obtain an awaitable object from the event, which populates eventPtr->_AwaitContext
   // and creates a SharedAwaitContext shared by the awaitable.

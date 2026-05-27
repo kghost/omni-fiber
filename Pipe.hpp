@@ -33,19 +33,17 @@ public:
     bool AwaitReady() const { return !_Pipe._Data.has_value(); }
     void AwaitValue() {}
 
-    void Put(DataType&& data) {
+    AwaitableCustom<Producer, SingleAwaitable> Put(DataType&& data) {
       assert(!_Pipe._Data.has_value());
       _Pipe._Data.emplace(PipeDataState::Data, std::move(data));
       SingleAwaitable::Fire(_Pipe._AwaitReadContext);
+      return AwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
     }
 
-    void Close() {
+    AwaitableCustom<Producer, SingleAwaitable> Close() {
       assert(!_Pipe._Data.has_value());
       _Pipe._Data.emplace(PipeDataState::End, std::nullopt);
       SingleAwaitable::Fire(_Pipe._AwaitReadContext);
-    }
-
-    AwaitableCustom<Producer, SingleAwaitable> operator co_await() {
       return AwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
     }
 

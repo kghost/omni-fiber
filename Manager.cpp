@@ -26,10 +26,6 @@ void Manager::Schedule(std::shared_ptr<Fiber> fiber) {
 }
 
 void Manager::Run() {
-  BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << std::string(10, '=') << " Before Run";
-  DumpAllFibers();
-  BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << std::string(10, '=') << " Before Run";
-
   while (!_ReadyQueue.empty()) {
     std::weak_ptr<Fiber> weak = _ReadyQueue.front();
     _ReadyQueue.pop();
@@ -41,10 +37,6 @@ void Manager::Run() {
   if (_RootFiber->IsFinished() && _RootFiber->_Exception.has_value()) {
     throw FiberException{.Fiber = _RootFiber, .InnerException = _RootFiber->_Exception.value()};
   }
-
-  BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << std::string(10, '=') << " After Run";
-  DumpAllFibers();
-  BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << std::string(10, '=') << " After Run";
 }
 
 void Manager::DumpAllFibers() { _RootFiber->DumpAllFibers(Log, 0); }

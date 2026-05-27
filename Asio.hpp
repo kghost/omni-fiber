@@ -45,7 +45,7 @@ template <typename... Results> struct async_result<Omni::Fiber::AsioUseFiberType
     auto helper = [](std::decay_t<Initiation> init,
                      std::decay_t<InitArgs>... initArgs) -> Omni::Fiber::Coroutine<std::tuple<Results...>> {
       std::optional<std::tuple<Results...>> rets;
-      Omni::Fiber::Event event;
+      Omni::Fiber::Event<> event;
       init(
           [&rets, &event](Results... results) {
             rets.emplace(std::move(results)...);

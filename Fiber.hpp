@@ -111,10 +111,10 @@ public:
   OMNIFIBER_API const std::string& GetName() const { return _Name; }
   OMNIFIBER_API bool IsFinished() { return _State == State::Finished; }
   OMNIFIBER_API void Schedule();
-  OMNIFIBER_API Coroutine<void> Join(std::shared_ptr<Fiber> child); // Join the child fiber.
-  // Wait and join first exit child, then return the child.
-  OMNIFIBER_API Coroutine<std::shared_ptr<Fiber>> WaitFor();
   OMNIFIBER_API Coroutine<void> Wait(std::function<bool()> until);
+  OMNIFIBER_API Coroutine<void> Join(std::shared_ptr<Fiber> child);
+  OMNIFIBER_API Coroutine<std::shared_ptr<Fiber>> WaitFor();
+  OMNIFIBER_API Coroutine<void> WaitAll();
 
   void DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent);
 
