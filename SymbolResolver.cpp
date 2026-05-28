@@ -4,6 +4,7 @@
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <dwarf.h>
+#include <elfutils/libdw.h>
 #include <elfutils/libdwfl.h>
 #include <sstream>
 #include <unistd.h>
@@ -63,6 +64,40 @@ std::string ResolveSymbol(void* address) {
           std::free(demangled);
         } else {
           resolvedName = symName;
+        }
+      } else {
+        // Fallback to DWARF DIE scope lookup if symbol table lookup fails
+        Dwarf_Addr bias = 0;
+        Dwarf_Die* cudie = dwfl_module_addrdie(mod, addr, &bias);
+        if (cudie) {
+          Dwarf_Die* scopes = nullptr;
+          int nscopes = dwarf_getscopes(cudie, addr - bias, &scopes);
+          if (nscopes > 0) {
+            for (int i = 0; i < nscopes; ++i) {
+              int tag = dwarf_tag(&scopes[i]);
+              if (tag == DW_TAG_subprogram || tag == DW_TAG_inlined_subroutine) {
+                Dwarf_Attribute attr;
+                const char* name = nullptr;
+                if (dwarf_attr_integrate(&scopes[i], DW_AT_linkage_name, &attr) ||
+                    dwarf_attr_integrate(&scopes[i], DW_AT_MIPS_linkage_name, &attr) ||
+                    dwarf_attr_integrate(&scopes[i], DW_AT_name, &attr)) {
+                  name = dwarf_formstring(&attr);
+                }
+                if (name) {
+                  int status = 0;
+                  char* demangled = abi::__cxa_demangle(name, nullptr, nullptr, &status);
+                  if (status == 0 && demangled) {
+                    resolvedName = demangled;
+                    std::free(demangled);
+                  } else {
+                    resolvedName = name;
+                  }
+                  break;
+                }
+              }
+            }
+            std::free(scopes);
+          }
         }
       }
 
