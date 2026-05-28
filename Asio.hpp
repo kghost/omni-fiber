@@ -41,11 +41,11 @@ template <typename... Results> struct async_result<Omni::Fiber::AsioUseFiberType
   template <typename Initiation, typename... InitArgs>
   static Omni::Fiber::Coroutine<std::tuple<Results...>> initiate(Initiation&& init, Omni::Fiber::AsioUseFiberType,
                                                                  InitArgs&&... initArgs) {
-    auto helper = [](std::decay_t<Initiation> init,
+    auto helper = [](std::decay_t<Initiation> initiation,
                      std::decay_t<InitArgs>... initArgs) -> Omni::Fiber::Coroutine<std::tuple<Results...>> {
       Omni::Fiber::Event<std::tuple<Results...>> event;
-      init([&event](Results... results) { event.Fire(std::make_tuple(std::move(results)...)); },
-           std::move(initArgs)...);
+      initiation([&event](Results... results) { event.Fire(std::make_tuple(std::move(results)...)); },
+                 std::move(initArgs)...);
       co_return co_await event;
     };
     return helper(std::forward<Initiation>(init), std::forward<InitArgs>(initArgs)...);

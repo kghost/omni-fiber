@@ -97,6 +97,44 @@ TEST(AsioTest, TimerCancellation) {
   EXPECT_TRUE(interrupterExecuted);
 }
 
+// Test Case: Cancellation Slot Integration
+TEST(AsioTest, CancellationSlotIntegration) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  bool childExecuted = false;
+  bool interrupterExecuted = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    auto sig = std::make_shared<boost::asio::cancellation_signal>();
+    auto timer = std::make_shared<boost::asio::steady_timer>(io, std::chrono::seconds(10));
+
+    Fiber& current = co_await GetCurrentFiber();
+    auto child = current.Spawn("child", [timer, sig, &childExecuted]() -> Coroutine<void> {
+      auto [ec] = co_await timer->async_wait(
+          boost::asio::bind_cancellation_slot(sig->slot(), AsioUseFiber));
+      EXPECT_EQ(ec, boost::asio::error::operation_aborted);
+      childExecuted = true;
+      co_return;
+    });
+
+    auto interrupter = current.Spawn("interrupter", [sig, &interrupterExecuted]() -> Coroutine<void> {
+      sig->emit(boost::asio::cancellation_type::total);
+      interrupterExecuted = true;
+      co_return;
+    });
+
+    co_await current.Join(child);
+    co_await current.Join(interrupter);
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(childExecuted);
+  EXPECT_TRUE(interrupterExecuted);
+}
+
 // Test Case 3: Multiple Results Integration
 TEST(AsioTest, MultiArgumentCustomAsyncOperation) {
   boost::asio::io_context io;
