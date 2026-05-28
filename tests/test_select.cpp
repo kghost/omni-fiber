@@ -231,3 +231,39 @@ TEST(SelectTest, PipeConsumerSelect) {
   ASSERT_EQ(sequence.size(), 1);
   EXPECT_EQ(sequence[0], "pipe_val_100");
 }
+
+// 7. Test case: Selecting on a temporary (rvalue) awaitable
+TEST(SelectTest, PipeConsumerSelectTemporary) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  auto producer = pipe.GetProducer();
+
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
+      co_await producer.Put(200);
+      co_return;
+    });
+
+    co_await Select(SelectPair(pipe.GetConsumer(), [&](auto result) {
+      if (result.has_value()) {
+        sequence.push_back("pipe_temp_val_" + std::to_string(result.value()));
+      }
+    }));
+
+    co_await current.Join(notifier);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 1);
+  EXPECT_EQ(sequence[0], "pipe_temp_val_" + std::to_string(200));
+}
+

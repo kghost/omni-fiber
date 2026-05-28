@@ -24,6 +24,12 @@ public:
   // ==== DataType == void
   template <typename U = DataType>
     requires(std::is_void_v<U>)
+  bool IsFired() const {
+    return _Data;
+  }
+
+  template <typename U = DataType>
+    requires(std::is_void_v<U>)
   OMNIFIBER_API void Fire() {
     _Data = true;
     SharedAwaitable::Fire(_AwaitContext);
@@ -40,6 +46,12 @@ public:
   void AwaitValue() {}
 
   // ==== DataType != void
+  template <typename U = DataType>
+    requires(!std::is_void_v<U>)
+  bool IsFired() const {
+    return _Data.has_value();
+  }
+
   template <typename T, typename U = DataType>
     requires(!std::is_void_v<U>)
   OMNIFIBER_API void Fire(T&& data) {

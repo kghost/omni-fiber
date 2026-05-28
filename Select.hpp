@@ -66,8 +66,8 @@ private:
   std::tuple<CallbackType<Pairs>...> _Callbacks;
 };
 
-template <typename Awaitable, typename Callback> auto SelectPair(Awaitable& awaitable, Callback&& callback) {
-  return std::pair<Awaitable&, std::decay_t<Callback>>(awaitable, std::forward<Callback>(callback));
+template <typename Awaitable, typename Callback> auto SelectPair(Awaitable&& awaitable, Callback&& callback) {
+  return std::pair<Awaitable&&, std::decay_t<Callback>>(std::forward<Awaitable>(awaitable), std::forward<Callback>(callback));
 }
 
 template <typename... Pairs> auto Select(Pairs&&... pairs) {
