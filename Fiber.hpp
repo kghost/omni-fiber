@@ -16,7 +16,6 @@
 #include "Coroutine.hpp"
 #include "FiberFinishNotifier.hpp"
 #include "FiberPromise.hpp"
-#include "SharedAwaitable.hpp"
 
 #include "shared.h"
 
@@ -25,6 +24,7 @@ namespace Fiber {
 
 class Manager;
 class SingleAwaitable;
+class SharedAwaitContext;
 
 class Fiber : public std::enable_shared_from_this<Fiber> {
 private:
@@ -46,7 +46,7 @@ private:
         public:
           Awaitor(Fiber& owner) : _Fiber(owner) {}
           constexpr bool await_ready() const noexcept { return false; }
-          void await_suspend(std::coroutine_handle<> caller) const noexcept { _Fiber.StartingYield(caller); }
+          void await_suspend(std::coroutine_handle<Promise> caller) const noexcept { _Fiber.StartingYield(caller); }
           constexpr void await_resume() const noexcept {}
 
         private:
@@ -117,11 +117,16 @@ public:
   OMNIFIBER_API Coroutine<void> WaitAll();
 
   void DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent);
+#ifndef NDEBUG
+  void DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent);
+  void SetSuspendedPromise(FiberPromise* suspendedPromise) { _SuspendedPromise = suspendedPromise; }
+#else
+  void DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent) {}
+#endif
 
 private:
   friend class Manager;
-  friend class SharedAwaitable;
-  friend class SingleAwaitable;
+  template <typename Impl> friend class AwaitableBase;
   friend boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);
 
   class ChildFiberFinishNotifier : public FiberFinishNotifier {
@@ -154,7 +159,7 @@ private:
   OMNIFIBER_API void Suspend(std::coroutine_handle<> caller);
   OMNIFIBER_API void Resume(); // Called by Manager to continue this fiber.
 
-  OMNIFIBER_API void StartingYield(std::coroutine_handle<> caller);
+  OMNIFIBER_API void StartingYield(std::coroutine_handle<Fiber::FiberFrame::Promise> caller);
   OMNIFIBER_API void Finishing();
   OMNIFIBER_API void SetException(std::exception_ptr eptr);
   void OnChildFinished(std::shared_ptr<Fiber> child);
@@ -178,7 +183,11 @@ private:
   // Children management.
   std::set<std::shared_ptr<Fiber>> _Children;
   std::set<std::shared_ptr<Fiber>> _FinishedChildren;
-  SharedAwaitable::ContextStorage _JoinAwaitContext;
+  std::weak_ptr<SharedAwaitContext> _JoinAwaitContext;
+
+#ifndef NDEBUG
+  FiberPromise* _SuspendedPromise = nullptr;
+#endif
 };
 
 boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);

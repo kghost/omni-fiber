@@ -1,9 +1,6 @@
 #pragma once
 
-#include <coroutine>
-#include <memory>
-#include <optional>
-
+#include "AwaitableBase.hpp"
 #include "shared.h"
 
 namespace Omni {
@@ -13,7 +10,7 @@ class Fiber;
 class SingleAwaitContext;
 
 // Optimized awaitable base class that only allows one fiber pending on it.
-class SingleAwaitable {
+class SingleAwaitable : public AwaitableBase<SingleAwaitable> {
 public:
   using ContextStorage = SingleAwaitContext;
 
@@ -30,18 +27,11 @@ protected:
   SingleAwaitable& operator=(SingleAwaitable&&) = delete;
 
 public:
-  void Schedule();
-
-  template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
-    _Owner = caller.promise().GetFiber().shared_from_this();
-    DoAwaitSuspend(caller);
-  }
+  void DoSchedule();
+  void DoAwaitSuspend();
 
 private:
   SingleAwaitContext& _Context;
-  std::optional<std::shared_ptr<Fiber>> _Owner;
-
-  void DoAwaitSuspend(std::coroutine_handle<> caller);
 };
 
 } // namespace Fiber

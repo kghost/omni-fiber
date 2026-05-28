@@ -25,16 +25,12 @@ void SharedAwaitable::Fire(ContextStorage& storage) {
 SharedAwaitable::SharedAwaitable(ContextStorage& context) : _Context(Get(context)) {}
 
 SharedAwaitable::~SharedAwaitable() {
-  if (_Owner.has_value()) {
+  if (this->IsSuspended()) {
     _Context->RemoveFiberAwaitable(*this);
   }
 }
-void SharedAwaitable::Schedule() { _Owner.value()->Schedule(); }
 
-void SharedAwaitable::DoAwaitSuspend(std::coroutine_handle<> caller) {
-  _Context->AddFiberAwaitable(*this);
-  _Owner.value()->Suspend(caller);
-}
+void SharedAwaitable::DoAwaitSuspend() { _Context->AddFiberAwaitable(*this); }
 
 } // namespace Fiber
 } // namespace Omni

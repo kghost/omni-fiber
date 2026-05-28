@@ -4,6 +4,14 @@
 #include <string>
 #include <vector>
 
+#ifndef NDEBUG
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
+#include <sstream>
+#endif
+
 #include "Asio.hpp"
 #include "Coroutine.hpp"
 #include "Event.hpp"
@@ -361,3 +369,83 @@ TEST(FiberTest, JoinInterleavedSignalLossBug) {
 
   EXPECT_EQ(waitedName, "child1");
 }
+
+// 11. Test Capture and Output of Fiber Callstack via Promise Chain
+#ifndef NDEBUG
+Coroutine<void> CallstackTrace_C(Event<>& event) {
+  co_await event;
+  co_return;
+}
+
+Coroutine<void> CallstackTrace_B(Event<>& event) {
+  co_await CallstackTrace_C(event);
+  co_return;
+}
+
+Coroutine<void> CallstackTrace_A(Event<>& event) {
+  co_await CallstackTrace_B(event);
+  co_return;
+}
+
+TEST(FiberTest, CallstackTrace) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event event;
+  bool finished = false;
+
+  // Set up Boost.Log capture
+  boost::shared_ptr<boost::log::core> logCore = boost::log::core::get();
+
+  // Set filter to debug to ensure our messages pass
+  logCore->set_filter(boost::log::trivial::severity >= boost::log::trivial::debug);
+
+  using BackendType = boost::log::sinks::text_ostream_backend;
+  boost::shared_ptr<BackendType> backend = boost::make_shared<BackendType>();
+  boost::shared_ptr<std::stringstream> logStream(new std::stringstream());
+  backend->add_stream(logStream);
+
+  using SinkType = boost::log::sinks::synchronous_sink<BackendType>;
+  boost::shared_ptr<SinkType> sink = boost::make_shared<SinkType>(backend);
+  logCore->add_sink(sink);
+
+  std::shared_ptr<Fiber> child;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    child = current.Spawn("trace_child", [&]() -> Coroutine<void> {
+      co_await CallstackTrace_A(event);
+      finished = true;
+      co_return;
+    });
+
+    co_await current.Join(child);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  // At this point, both fibers are suspended, so we call DumpAllFibers from the test body!
+  manager.DumpAllFibers();
+
+  // Resume and run the event loop to finish
+  event.Fire();
+  RunEventLoop(io);
+
+  // Clean up boost log capture sink
+  logCore->remove_sink(sink);
+
+  EXPECT_TRUE(finished);
+
+  std::string logs = logStream->str();
+  // Verify that the callstack logs were output
+  EXPECT_NE(logs.find("#0"), std::string::npos);
+  EXPECT_NE(logs.find("#1"), std::string::npos);
+  EXPECT_NE(logs.find("#2"), std::string::npos);
+
+  // Print logs for manual inspection
+  std::cout << "Captured log:\n" << logs << std::endl;
+}
+#endif

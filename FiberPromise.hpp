@@ -17,6 +17,16 @@ public:
   FiberPromise& operator=(FiberPromise&&) = delete;
 
   virtual Fiber& GetFiber() = 0;
+
+#ifndef NDEBUG
+public:
+  void SetInstructionPointer(void* ip) noexcept { _InstructionPointer = ip; }
+  void* GetInstructionPointer() const noexcept { return _InstructionPointer; }
+  virtual FiberPromise* GetCallerPromise() const noexcept { return nullptr; }
+
+private:
+  void* _InstructionPointer = nullptr;
+#endif
 };
 
 } // namespace Fiber

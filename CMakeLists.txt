@@ -29,6 +29,7 @@ set(SOURCES
   SingleAwaitContext.cpp
   SingleAwaitable.cpp
   Manager.cpp
+  SymbolResolver.cpp
 )
 
 # Windows-only source for DLL entry point
@@ -60,6 +61,11 @@ target_link_libraries(omnifiber
   Boost::log
   Boost::thread
 )
+
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+  find_library(DW_LIBRARY NAMES dw REQUIRED)
+  target_link_libraries(omnifiber PRIVATE ${DW_LIBRARY})
+endif()
 
 # Target properties
 set_target_properties(omnifiber PROPERTIES

@@ -6,7 +6,7 @@ include(GoogleTest)
 add_executable(omnifiber_test_fiber test_fiber.cpp)
 target_link_libraries(omnifiber_test_fiber PRIVATE omnifiber GTest::gtest_main Boost::log Boost::thread)
 target_compile_options(omnifiber_test_fiber PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-target_link_options(omnifiber_test_fiber PRIVATE -fsanitize=address)
+target_link_options(omnifiber_test_fiber PRIVATE -fsanitize=address -rdynamic)
 gtest_discover_tests(omnifiber_test_fiber)
 
 add_executable(omnifiber_test_coroutine test_coroutine.cpp)

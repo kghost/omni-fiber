@@ -10,6 +10,11 @@
 
 #include "FiberPromise.hpp"
 
+#ifndef NDEBUG
+#include <boost/log/common.hpp>
+#include <boost/log/trivial.hpp>
+#endif
+
 namespace Omni {
 namespace Fiber {
 
@@ -18,6 +23,12 @@ private:
   template <typename Impl> class PromiseBase : public FiberPromise {
   public:
     Fiber& GetFiber() override { return _CallerPromise.value().get().GetFiber(); }
+
+#ifndef NDEBUG
+    FiberPromise* GetCallerPromise() const noexcept override {
+      return _CallerPromise.has_value() ? &_CallerPromise.value().get() : nullptr;
+    }
+#endif
 
     Coroutine get_return_object(this Impl& self) { return Coroutine{std::coroutine_handle<Impl>::from_promise(self)}; }
     std::suspend_always initial_suspend() const noexcept { return {}; }
@@ -35,7 +46,17 @@ private:
       };
       return FinalAwaiter{};
     }
-    void unhandled_exception() { _RetState = std::unexpected(std::current_exception()); }
+    void unhandled_exception(this Impl& self) {
+      self._RetState = std::unexpected(std::current_exception());
+#ifndef NDEBUG
+      self.SetInstructionPointer(__builtin_return_address(0));
+      auto& fiber = self.GetFiber();
+      fiber.SetSuspendedPromise(&self);
+      boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
+      BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::error) << "Unhandled exception escaping coroutine:";
+      fiber.DumpCallStack(logger, 0);
+#endif
+    }
     bool IsFinished() const noexcept { return _RetState.has_value(); }
 
   protected:
@@ -76,6 +97,9 @@ public:
     promise_type& promise = _Callee.promise();
     promise._Caller.emplace(caller);
     promise._CallerPromise.emplace(caller.promise());
+#ifndef NDEBUG
+    caller.promise().SetInstructionPointer(__builtin_return_address(0));
+#endif
     return _Callee;
   }
   RetType await_resume() {

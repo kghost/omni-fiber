@@ -1,9 +1,8 @@
 #pragma once
 
-#include <coroutine>
 #include <memory>
-#include <optional>
 
+#include "AwaitableBase.hpp"
 #include "shared.h"
 
 namespace Omni {
@@ -14,7 +13,7 @@ class SharedAwaitContext;
 
 // Awaitables that can be co_awaited by fibers. It should be placed as a temporary object in co_await expression, and
 // destroyed after the co_await expression is evaluated. Never hold it to an lvalue or a member variable.
-class SharedAwaitable {
+class SharedAwaitable : public AwaitableBase<SharedAwaitable> {
 public:
   using ContextStorage = std::weak_ptr<SharedAwaitContext>;
 
@@ -31,18 +30,11 @@ protected:
   SharedAwaitable& operator=(SharedAwaitable&&) = delete;
 
 public:
-  void Schedule();
-
-  template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
-    _Owner = caller.promise().GetFiber().shared_from_this();
-    DoAwaitSuspend(caller);
-  }
+  void DoSchedule() {}
+  void DoAwaitSuspend();
 
 private:
   std::shared_ptr<SharedAwaitContext> _Context;
-  std::optional<std::shared_ptr<Fiber>> _Owner;
-
-  void DoAwaitSuspend(std::coroutine_handle<> caller);
 };
 
 } // namespace Fiber

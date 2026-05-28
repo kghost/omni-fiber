@@ -10,6 +10,11 @@
 #include "GetCurrentFiber.hpp"
 #include "Manager.hpp"
 #include "SharedAwaitContext.hpp"
+#include "SharedAwaitable.hpp"
+
+#ifndef NDEBUG
+#include "SymbolResolver.hpp"
+#endif
 
 namespace Omni {
 namespace Fiber {
@@ -73,7 +78,7 @@ void Fiber::Suspend(std::coroutine_handle<> caller) {
   _State = State::Suspending;
 }
 
-void Fiber::StartingYield(std::coroutine_handle<> caller) {
+void Fiber::StartingYield(std::coroutine_handle<Fiber::FiberFrame::Promise> caller) {
   assert(_State == State::NotStart);
   assert(!_Continuation.has_value());
   _Continuation.emplace(caller);
@@ -83,6 +88,9 @@ void Fiber::StartingYield(std::coroutine_handle<> caller) {
 void Fiber::Resume() {
   assert(_State == State::Ready);
   _State = State::Running;
+#ifndef NDEBUG
+  _SuspendedPromise = nullptr;
+#endif
   std::exchange(_Continuation, std::nullopt).value().resume();
   switch (_State) {
   case State::Suspending:
@@ -115,10 +123,27 @@ void Fiber::SetException(std::exception_ptr eptr) {
 void Fiber::DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger,
                           int indent) {
   BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::debug) << std::string(indent, ' ') << *this;
+  DumpCallStack(logger, indent + 4);
   for (auto child : _Children) {
     child->DumpAllFibers(logger, indent + 2);
   }
 }
+
+#ifndef NDEBUG
+void Fiber::DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger,
+                          int indent) {
+  if (_SuspendedPromise) {
+    FiberPromise* current = _SuspendedPromise;
+    int frameIdx = 0;
+    while (current) {
+      void* ip = current->GetInstructionPointer();
+      BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::debug)
+          << std::string(indent, ' ') << "#" << frameIdx++ << " " << ResolveSymbol(ip);
+      current = current->GetCallerPromise();
+    }
+  }
+}
+#endif
 
 boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber) {
   p << "[Fiber " << fiber._Name << " @" << &fiber << " " << boost::describe::enum_to_string(fiber._State, "Unknown")
