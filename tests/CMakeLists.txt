@@ -45,3 +45,9 @@ target_compile_options(omnifiber_test_pipe PRIVATE -fsanitize=address -fno-omit-
 target_link_options(omnifiber_test_pipe PRIVATE -fsanitize=address)
 gtest_discover_tests(omnifiber_test_pipe)
 
+add_executable(omnifiber_test_select test_select.cpp)
+target_link_libraries(omnifiber_test_select PRIVATE omnifiber-asan GTest::gtest_main Boost::log Boost::thread)
+target_compile_options(omnifiber_test_select PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(omnifiber_test_select PRIVATE -fsanitize=address)
+gtest_discover_tests(omnifiber_test_select)
+

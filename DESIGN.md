@@ -200,7 +200,7 @@ A producer-consumer queue constructed on top of `Event` and `std::queue<T>`:
 
 ---
 
-## 7. Interruption and Exception Propagation
+## 7. Exception Propagation
 
 Structured cooperative programming requires robust mechanisms for cancellation and exception safety:
 

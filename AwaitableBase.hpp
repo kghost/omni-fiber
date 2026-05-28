@@ -21,7 +21,8 @@ protected:
 
 public:
   bool IsSuspended() const noexcept { return _Owner.has_value(); }
-
+  void SetOwner(Fiber& owner) { _Owner = owner; }
+  Fiber& GetOwner() const { return _Owner.value().get(); }
   void Schedule(this Impl& self) { self._Owner.value().get().Schedule(); }
 
   template <typename PromiseType> void await_suspend(this Impl& self, std::coroutine_handle<PromiseType> caller) {

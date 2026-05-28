@@ -105,6 +105,7 @@ if(NOT OMNIFIBER_INTERNAL)
     FiberFinishNotifier.hpp
     GetCurrentFiber.hpp
     Manager.hpp
+    Select.hpp
     shared.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omnifiber
   )

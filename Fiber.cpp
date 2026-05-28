@@ -67,9 +67,11 @@ Coroutine<void> Fiber::WaitAll() {
 }
 
 void Fiber::Schedule() {
-  assert(_State == State::Suspended);
-  _State = State::Ready;
-  _Manager.Schedule(*this);
+  assert(_State == State::Suspended || _State == State::Ready); // It can be ready when selecting multiple events
+  if (_State == State::Suspended) {
+    _State = State::Ready;
+    _Manager.Schedule(*this);
+  }
 }
 
 void Fiber::Suspend(std::coroutine_handle<> caller) {
