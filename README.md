@@ -1,16 +1,17 @@
 # OmniFiber
 
-**OmniFiber** is a lightweight, high-performance cooperative multi-tasking (fiber) library for C++20. It seamlessly integrates C++20 stackless coroutines with the **Boost.Asio** asynchronous event loop, allowing developers to write highly concurrent I/O-bound applications in a clean, readable, synchronous style without callback hell or complex state machines.
+**OmniFiber** is a lightweight, high-performance cooperative multi-tasking (fiber) library for C++23. It seamlessly integrates C++ standard coroutines with the **Boost.Asio** asynchronous event loop, allowing developers to write highly concurrent I/O-bound applications in a clean, readable, synchronous style without callback hell, complex state machines, or thread-blocking overhead.
 
 ---
 
 ## Key Features
 
-- **Native C++20 Coroutines**: Built on standard `std::coroutine_handle` and custom promise types.
-- **Structured Concurrency**: Spawns fibers in a parent-child hierarchy, allowing parents to track and `Join` child fibers cooperatively.
-- **Pluggable Executors**: Decoupled scheduler logic running on an abstract `Executor` interface.
-- **Boost.Asio Integration**: Built-in `AsioExecutor` and custom completion token `AsioUseFiber` to orchestrate fibers directly within a Boost.Asio event loop (`boost::asio::io_context`).
-- **Cooperative Sync Primitives**: Awaitable synchronization tools like `Event` and `EventQueue<T>` that yield execution instead of blocking threads.
+- **Native C++23 Coroutines**: Built on standard `std::coroutine_handle` and custom promise types. Supports C++23 explicit object parameters (`this Impl& self`).
+- **Structured Concurrency**: Spawns fibers in a robust parent-child hierarchy. Enforces structured joining, allowing parents to wait for single, first, or all child fibers cooperatively, with seamless exception propagation.
+- **Boost.Asio Integration**: Built-in `AsioExecutor` and specialized completion token `AsioUseFiber` to orchestrate fibers directly within a Boost.Asio event loop (`boost::asio::io_context`).
+- **Cooperative Sync Primitives**: Awaitable synchronization tools (`Event<T>`, `Signal`, `Pipe<T>`, `EventQueue<T>`) that yield execution instead of blocking OS threads.
+- **Cooperative Multiplexing**: `Select` multiplexer to await multiple events simultaneously with automatic RAII-based cancellation support.
+- **Advanced Diagnostics (`#ifndef NDEBUG`)**: Callstack reconstruction via promise chaining and instruction pointer tracking, integrated with DWARF symbol resolution (`libdw`) for human-readable stack traces.
 
 ---
 
@@ -19,12 +20,12 @@
 OmniFiber resides in the `Omni::Fiber` namespace. The main components are summarized below:
 
 ### 1. Coroutine Wrapper (`Coroutine<RetType>`)
-A type representing a C++20 coroutine. Functions returning `Coroutine<RetType>` are cooperatively awaitable using `co_await`.
+A type representing a C++ coroutine. Functions returning `Coroutine<RetType>` are cooperatively awaitable using `co_await`.
 - Supports both `void` and non-`void` return types.
-- Handles return values and exceptions automatically.
+- Destructor asserts that the coroutine is fully completed, catching unawaited coroutines or lifetime mismatches early.
 - **Usage**:
   ```cpp
-  #include <omnifiber/Coroutine.h>
+  #include <omnifiber/Coroutine.hpp>
 
   Omni::Fiber::Coroutine<int> CalculateValue() {
       co_return 42;
@@ -32,32 +33,35 @@ A type representing a C++20 coroutine. Functions returning `Coroutine<RetType>` 
   ```
 
 ### 2. Fiber (`Fiber`)
-Represents an independent cooperative thread of execution.
+Represents an independent cooperative unit of execution.
 - **Spawning child fibers**: 
   ```cpp
+  #include <omnifiber/Fiber.hpp>
+
   std::shared_ptr<Fiber> child = parent->Spawn("child_name", []() -> Coroutine<void> {
       // Fiber execution logic
       co_return;
   });
   ```
-- **Joining**: A parent fiber can wait for a child fiber using `Join`:
-  ```cpp
-  co_await parent->Join(child);
-  ```
+- **Joining & Waiting**:
+  - `co_await parent->Join(child)`: Waits for the specified child to finish and propagates its unhandled exceptions (wrapped in `FiberException`).
+  - `co_await parent->WaitFor()`: Waits for the *first* child to finish and returns its `std::shared_ptr<Fiber>` pointer (or propagates its exception).
+  - `co_await parent->WaitAll()`: Blocks until all active and completed child fibers are fully joined.
+  - `co_await parent->Wait(until_callback)`: Yields the fiber until the boolean callback condition returns true.
 
 ### 3. Manager (`Manager`)
 The fiber scheduler. It runs a queue of "ready" fibers and schedules them onto the underlying executor.
 - **Initialization**:
   ```cpp
-  #include <omnifiber/ManagerDeclare.h>
-  #include <omnifiber/ManagerDefine.h>
+  #include <omnifiber/Manager.hpp>
+  #include <omnifiber/Asio.hpp>
   
   Omni::Fiber::AsioExecutor executor(io_context);
   Omni::Fiber::Manager manager(executor);
   ```
 - **Root Fiber**: Spawns the main outer fiber to start the execution tree.
   ```cpp
-  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+  std::shared_ptr<Fiber> root = manager.SpawnRoot("root", [&]() -> Coroutine<void> {
       // Main fiber loop
       co_return;
   });
@@ -80,74 +84,106 @@ An awaitable to retrieve a reference to the active `Fiber` from inside a running
 The flagship integration feature. Pass `Omni::Fiber::AsioUseFiber` as the completion token to any Boost.Asio async operation (e.g., `async_read`, `async_write`, `async_wait`) to automatically suspend the running fiber and resume it once the operation completes.
 - **Usage**:
   ```cpp
-  #include <omnifiber/Asio.h>
+  #include <omnifiber/Asio.hpp>
 
   // Wait for 1 second cooperatively inside a fiber without blocking the thread
   boost::asio::steady_timer timer(io_context, std::chrono::seconds(1));
   std::tuple<boost::system::error_code> res = co_await timer.async_wait(Omni::Fiber::AsioUseFiber);
   ```
 
-### 6. Cooperative Synchronization Primitives
+### 6. Synchronization & Multiplexing Primitives
 
-#### `Event`
-A cooperative notification event. A fiber can wait on the event, suspending itself until another fiber triggers `Set()`.
+#### `Event<DataType = void>`
+A cooperative notification event that can optionally hold a data payload.
 ```cpp
-#include <omnifiber/Event.h>
+#include <omnifiber/Event.hpp>
 
-Omni::Fiber::Event evt;
+Omni::Fiber::Event<int> dataEvent;
 
 // Inside Fiber A (Waiter)
-co_await evt; // Suspends fiber A
+int result = co_await dataEvent; // Suspends until fired, then returns 42
 
 // Inside Fiber B (Notifier)
-evt.Set();    // Wakes up Fiber A (schedules it for execution)
+dataEvent.Fire(42);              // Wakes up all waiting fibers
 ```
 
-#### `EventQueue<Element>`
-A thread-safe, cooperatively awaitable queue. Perfect for producer-consumer pipelines between fibers.
+#### `Signal`
+A stateless, one-shot-and-forget notification primitive.
 ```cpp
-#include <omnifiber/EventQueue.h>
+#include <omnifiber/Signal.hpp>
 
-Omni::Fiber::EventQueue<std::string> msgQueue;
+Omni::Fiber::Signal signal;
 
-// Inside Consumer Fiber
-co_await msgQueue; // Suspends until queue is non-empty
-std::string msg = msgQueue.PopFront();
+// Inside Fiber A (Waiter)
+co_await signal; // Suspends Fiber A. Subsequent awaits will also suspend.
+
+// Inside Fiber B (Notifier)
+signal.Fire();   // Wakes up all current waiters
+```
+
+#### `Pipe<DataType>`
+A cooperatively-blocking synchronous channel with a capacity of 1 element.
+```cpp
+#include <omnifiber/Pipe.hpp>
+
+Omni::Fiber::Pipe<std::string> pipe;
+auto producer = pipe.GetProducer();
+auto consumer = pipe.GetConsumer();
 
 // Inside Producer Fiber
-msgQueue.Push("Hello, Fiber!"); // Triggers event, resumes consumer
+co_await producer.Put("Hello, Pipe!"); // Blocks until consumed
+producer.Close();                      // Closes the pipe
+
+// Inside Consumer Fiber
+std::expected<std::string, PipeClosed> res = co_await consumer; // Suspends until ready
+if (res.has_value()) {
+    std::cout << "Received: " << res.value() << std::endl;
+}
+```
+
+#### `Select`
+Multiplexes multiple awaitables deriving from `AwaitableBase` (e.g., events, pipes).
+```cpp
+#include <omnifiber/Select.hpp>
+
+Event<int> event1;
+Pipe<std::string>::Consumer consumer = pipe.GetConsumer();
+
+co_await Select(
+    SelectPair(event1, [](int val) { std::cout << "Event: " << val << "\n"; }),
+    SelectPair(consumer, [](auto res) { std::cout << "Pipe read occurred\n"; })
+);
 ```
 
 ---
 
 ## Quick Start Example
 
-Below is a complete, working-style example demonstrating how to initialize the `Manager`, bind it to Boost.Asio, and run cooperative fibers:
+Below is a complete example demonstrating how to initialize the `Manager`, bind it to Boost.Asio, and run cooperative fibers:
 
 ```cpp
 #include <iostream>
 #include <boost/asio.hpp>
-#include <omnifiber/Coroutine.h>
-#include <omnifiber/Fiber.h>
+#include <omnifiber/Coroutine.hpp>
+#include <omnifiber/Fiber.hpp>
 #include <omnifiber/GetCurrentFiber.hpp>
-#include <omnifiber/ManagerDeclare.h>
-#include <omnifiber/ManagerDefine.h>
-#include <omnifiber/Asio.h>
-#include <omnifiber/Event.h>
+#include <omnifiber/Manager.hpp>
+#include <omnifiber/Asio.hpp>
+#include <omnifiber/Event.hpp>
 
 using namespace Omni::Fiber;
 
-Coroutine<void> WorkerFiber(int id, std::shared_ptr<Event> startSignal) {
+Coroutine<void> WorkerFiber(int id, std::shared_ptr<Event<void>> startSignal, boost::asio::io_context& io) {
     std::cout << "[Worker " << id << "] Waiting for start signal..." << std::endl;
-    co_await *startSignal; // Cooperatively yield until signaled
+    co_await *startSignal; // Yield until signaled
 
     std::cout << "[Worker " << id << "] Started! Performing async work..." << std::endl;
     
     // Perform a cooperative sleep using Boost.Asio timer
-    auto& io = boost::asio::query(boost::asio::system_executor(), boost::asio::execution::context); // or pass io_context
-    Fiber& currentFiber = co_await GetCurrentFiber();
-    boost::asio::steady_timer timer(currentFiber.GetManager().GetRunner()._Manager...); // Simplified context usage
-    // Real code usually passes io_context down or captures it.
+    boost::asio::steady_timer timer(io, std::chrono::seconds(1));
+    co_await timer.async_wait(AsioUseFiber);
+    
+    std::cout << "[Worker " << id << "] Done!" << std::endl;
 }
 
 int main() {
@@ -155,21 +191,20 @@ int main() {
     AsioExecutor executor(io);
     Manager manager(executor);
 
-    auto startSignal = std::make_shared<Event>();
+    auto startSignal = std::make_shared<Event<void>>();
 
     manager.SpawnRoot("root", [&]() -> Coroutine<void> {
         Fiber& currentFiber = co_await GetCurrentFiber();
         std::cout << "[Root] Spawning worker fibers..." << std::endl;
 
-        auto worker1 = currentFiber.Spawn("worker1", [&]() { return WorkerFiber(1, startSignal); });
-        auto worker2 = currentFiber.Spawn("worker2", [&]() { return WorkerFiber(2, startSignal); });
+        auto worker1 = currentFiber.Spawn("worker1", [&]() { return WorkerFiber(1, startSignal, io); });
+        auto worker2 = currentFiber.Spawn("worker2", [&]() { return WorkerFiber(2, startSignal, io); });
 
-        // Simulate some setup delay
         std::cout << "[Root] Setting up..." << std::endl;
         
         // Signal the workers
         std::cout << "[Root] Signaling workers to start!" << std::endl;
-        startSignal->Set();
+        startSignal->Fire();
 
         // Join workers
         co_await currentFiber.Join(worker1);
@@ -178,7 +213,7 @@ int main() {
         std::cout << "[Root] All workers finished!" << std::endl;
     });
 
-    // Run the Boost.Asio event loop. It will execute the posted fiber tasks.
+    // Run the Boost.Asio event loop
     io.run();
 
     return 0;
@@ -189,13 +224,17 @@ int main() {
 
 ## Building and Installation
 
-OmniFiber is packaged as a shared library. Include it in your CMake project as follows:
+OmniFiber can be built and linked via CMake:
 
 ```cmake
 find_package(omnifiber REQUIREDConfig)
+# Normal variant
 target_link_libraries(your_target PRIVATE omnifiber::omnifiber)
+# AddressSanitizer variant
+target_link_libraries(your_target PRIVATE omnifiber::omnifiber-asan)
 ```
 
 **Requirements**:
-- C++20 compliant compiler (GCC 10+, Clang 11+, or MSVC 2019+).
-- Boost (1.75+) containing log, thread, and asio components.
+- C++23 compliant compiler (GCC 13+, Clang 16+, or MSVC 2022+).
+- Boost (1.75+) containing Log, Thread, and Asio components.
+- `libdw` (ELF/DWARF library, required in Debug/non-production builds for stack-trace symbol resolution).
