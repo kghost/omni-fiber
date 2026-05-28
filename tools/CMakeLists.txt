@@ -4,7 +4,7 @@ add_executable(omnifiber_example example.cpp)
 
 target_link_libraries(omnifiber_example
   PRIVATE
-    omnifiber_asan
+    omnifiber-asan
     Boost::log
     Boost::thread
 )

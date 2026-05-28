@@ -30,7 +30,7 @@ if(WIN32)
 endif()
 
 # Define the libraries (both standard and ASan)
-foreach(suffix "" "_asan")
+foreach(suffix "" "-asan")
   set(target "omnifiber${suffix}")
   add_library(${target} STATIC ${SOURCES})
 
@@ -77,7 +77,7 @@ foreach(suffix "" "_asan")
     target_compile_options(${target} PRIVATE -Wall -Wextra -fvisibility=hidden)
   endif()
 
-  if(suffix STREQUAL "_asan")
+  if(suffix STREQUAL "-asan")
     target_compile_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
     target_link_options(${target} PRIVATE -fsanitize=address)
   endif()
@@ -86,7 +86,7 @@ endforeach()
 # Installation (optional but good practice)
 if(NOT OMNIFIBER_INTERNAL)
   include(GNUInstallDirs)
-  install(TARGETS omnifiber omnifiber_asan
+  install(TARGETS omnifiber omnifiber-asan
     EXPORT omnifiberTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
