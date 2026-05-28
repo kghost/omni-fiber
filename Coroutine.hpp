@@ -55,6 +55,7 @@ private:
       boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
       BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::error) << "Unhandled exception escaping coroutine:";
       fiber.DumpCallStack(logger, 0);
+      fiber.SetSuspendedPromise(nullptr);
 #endif
     }
     bool IsFinished() const noexcept { return _RetState.has_value(); }

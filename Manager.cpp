@@ -25,7 +25,7 @@ Manager::~Manager() {
   assert(_RootFiber->IsFinished());
 }
 
-void Manager::Schedule(std::shared_ptr<Fiber> fiber) {
+void Manager::Schedule(Fiber& fiber) {
   _ReadyQueue.push(fiber);
   if (!Executing && !Posted) {
     _Executor.Post(*this);
@@ -34,11 +34,9 @@ void Manager::Schedule(std::shared_ptr<Fiber> fiber) {
 
 void Manager::Run() {
   while (!_ReadyQueue.empty()) {
-    std::weak_ptr<Fiber> weak = _ReadyQueue.front();
+    auto fiber = _ReadyQueue.front();
     _ReadyQueue.pop();
-    if (auto fiber = weak.lock()) {
-      fiber->Resume();
-    }
+    fiber.get().Resume();
   }
 
   if (_RootFiber->IsFinished() && _RootFiber->_Exception.has_value()) {
@@ -48,7 +46,7 @@ void Manager::Run() {
 
 void Manager::DumpAllFibers() { _RootFiber->DumpAllFibers(Log, 0); }
 
-void Manager::OnFiberFinished(std::shared_ptr<Fiber> /*unused*/) {
+void Manager::OnFiberFinished(Fiber& /*unused*/) {
   BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << "All Fiber Finished.";
 }
 

@@ -19,10 +19,11 @@
 namespace Omni {
 namespace Fiber {
 
-void Fiber::OnChildFinished(std::shared_ptr<Fiber> child) {
-  assert(_Children.contains(child));
-  _Children.erase(child);
-  _FinishedChildren.insert(child);
+void Fiber::OnChildFinished(Fiber& child) {
+  auto it = _Children.find(child);
+  assert(it != _Children.end());
+  _FinishedChildren.insert(*it);
+  _Children.erase(it);
   SharedAwaitable::Fire(_JoinAwaitContext);
 }
 
@@ -68,7 +69,7 @@ Coroutine<void> Fiber::WaitAll() {
 void Fiber::Schedule() {
   assert(_State == State::Suspended);
   _State = State::Ready;
-  _Manager.Schedule(shared_from_this());
+  _Manager.Schedule(*this);
 }
 
 void Fiber::Suspend(std::coroutine_handle<> caller) {
@@ -100,7 +101,7 @@ void Fiber::Resume() {
   case State::Finishing:
     assert(!_Continuation.has_value());
     _State = State::Finished;
-    _FinishNotifier.OnFiberFinished(shared_from_this());
+    _FinishNotifier.OnFiberFinished(*this);
     return;
   default:
     assert(false);

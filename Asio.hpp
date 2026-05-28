@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <utility>
 
 #include <boost/asio.hpp>

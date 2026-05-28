@@ -26,7 +26,7 @@ class Manager;
 class SingleAwaitable;
 class SharedAwaitContext;
 
-class Fiber : public std::enable_shared_from_this<Fiber> {
+class Fiber {
 private:
   class FiberFrame {
   public:
@@ -109,6 +109,7 @@ public:
   BOOST_DESCRIBE_NESTED_ENUM(State, NotStart, Running, Suspending, Suspended, Ready, Finishing, Finished);
 
   OMNIFIBER_API const std::string& GetName() const { return _Name; }
+  OMNIFIBER_API Manager& GetManager() { return _Manager; }
   OMNIFIBER_API bool IsFinished() { return _State == State::Finished; }
   OMNIFIBER_API void Schedule();
   OMNIFIBER_API Coroutine<void> Wait(std::function<bool()> until);
@@ -133,7 +134,7 @@ private:
   public:
     ChildFiberFinishNotifier(Fiber& parent) : _Parent(parent) {}
     ~ChildFiberFinishNotifier() override {}
-    void OnFiberFinished(std::shared_ptr<Fiber> fiber) override { _Parent.OnChildFinished(fiber); }
+    void OnFiberFinished(Fiber& fiber) override { _Parent.OnChildFinished(fiber); }
 
   private:
     Fiber& _Parent;
@@ -155,14 +156,13 @@ private:
   Fiber(Fiber&&) = delete;
   Fiber& operator=(Fiber&&) = delete;
 
-  OMNIFIBER_API Manager& GetManager() { return _Manager; }
   OMNIFIBER_API void Suspend(std::coroutine_handle<> caller);
   OMNIFIBER_API void Resume(); // Called by Manager to continue this fiber.
 
   OMNIFIBER_API void StartingYield(std::coroutine_handle<Fiber::FiberFrame::Promise> caller);
   OMNIFIBER_API void Finishing();
   OMNIFIBER_API void SetException(std::exception_ptr eptr);
-  void OnChildFinished(std::shared_ptr<Fiber> child);
+  void OnChildFinished(Fiber& fiber);
 
   Manager& _Manager;
   const std::string _Name;
@@ -181,7 +181,7 @@ private:
   FiberFrame _OutMostFrame;
 
   // Children management.
-  std::set<std::shared_ptr<Fiber>> _Children;
+  std::set<std::shared_ptr<Fiber>, std::less<>> _Children;
   std::set<std::shared_ptr<Fiber>> _FinishedChildren;
   std::weak_ptr<SharedAwaitContext> _JoinAwaitContext;
 
@@ -191,6 +191,8 @@ private:
 };
 
 boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);
+inline bool operator<(const std::shared_ptr<Fiber>& lhs, const Fiber& rhs) { return lhs.get() < std::addressof(rhs); }
+inline bool operator<(const Fiber& lhs, const std::shared_ptr<Fiber>& rhs) { return std::addressof(lhs) < rhs.get(); }
 
 } // namespace Fiber
 } // namespace Omni

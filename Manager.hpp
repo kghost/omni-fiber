@@ -3,6 +3,7 @@
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
 #include <cassert>
+#include <functional>
 #include <memory>
 #include <queue>
 #include <string>
@@ -31,7 +32,7 @@ public:
   Manager& operator=(Manager&&) = delete;
 
   OMNIFIBER_API void DumpAllFibers();
-  OMNIFIBER_API void Schedule(std::shared_ptr<Fiber> fiber); // Mark the fiber ready to be scheduled.
+  OMNIFIBER_API void Schedule(Fiber& fiber); // Mark the fiber ready to be scheduled.
 
   // Spawn the root fiber
   template <typename CoroutineFunction>
@@ -70,7 +71,7 @@ public:
 
   Runner GetRunner() { return Runner(*this); }
 
-  void OnFiberFinished(std::shared_ptr<Fiber> fiber) override;
+  void OnFiberFinished(Fiber& fiber) override;
 
 private:
   OMNIFIBER_API void Run(); // Run until all fibers are not ready.
@@ -79,7 +80,7 @@ private:
   bool Posted = false;
   bool Executing = false;
 
-  std::queue<std::weak_ptr<Fiber>> _ReadyQueue;
+  std::queue<std::reference_wrapper<Fiber>> _ReadyQueue;
   std::shared_ptr<Fiber> _RootFiber;
 
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> Log;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <coroutine>
-#include <memory>
+#include <functional>
 #include <optional>
 
 #include "Fiber.hpp"
@@ -26,22 +26,22 @@ public:
 
   void Schedule(this Impl& self) {
     self.DoSchedule();
-    self._Owner.value()->Schedule();
+    self._Owner.value().get().Schedule();
   }
 
   template <typename PromiseType> void await_suspend(this Impl& self, std::coroutine_handle<PromiseType> caller) {
     auto& promise = caller.promise();
-    self._Owner = promise.GetFiber().shared_from_this();
+    self._Owner = promise.GetFiber();
 #ifndef NDEBUG
     promise.SetInstructionPointer(__builtin_return_address(0));
-    self._Owner.value()->SetSuspendedPromise(&promise);
+    self._Owner.value().get().SetSuspendedPromise(&promise);
 #endif
-    self._Owner.value()->Suspend(caller);
+    self._Owner.value().get().Suspend(caller);
     self.DoAwaitSuspend();
   }
 
 private:
-  std::optional<std::shared_ptr<Fiber>> _Owner;
+  std::optional<std::reference_wrapper<Fiber>> _Owner;
 };
 
 } // namespace Fiber

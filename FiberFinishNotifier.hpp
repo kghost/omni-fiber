@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 namespace Omni {
 namespace Fiber {
 
@@ -11,7 +9,7 @@ class FiberFinishNotifier {
 public:
   virtual ~FiberFinishNotifier() {}
 
-  virtual void OnFiberFinished(std::shared_ptr<Fiber> fiber) = 0;
+  virtual void OnFiberFinished(Fiber& fiber) = 0;
 };
 
 } // namespace Fiber
