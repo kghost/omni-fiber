@@ -59,13 +59,12 @@ TEST(PipeTest, BasicPutAndGet) {
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
       EXPECT_TRUE(consumer.AwaitReady());
-      auto [state, val] = co_await consumer;
-      EXPECT_EQ(state, Pipe<int>::PipeDataState::Data);
-      EXPECT_TRUE(val.has_value());
-      if (!val.has_value()) {
+      auto data = co_await consumer;
+      EXPECT_TRUE(data.has_value());
+      if (!data.has_value()) {
         co_return;
       }
-      EXPECT_EQ(*val, 42);
+      EXPECT_EQ(*data, 42);
       co_return;
     });
 
@@ -94,16 +93,15 @@ TEST(PipeTest, BasicClose) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
-      co_await producer.Close();
+      producer.Close();
       executed = true;
       co_return;
     });
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
       EXPECT_TRUE(consumer.AwaitReady());
-      auto [state, val] = co_await consumer;
-      EXPECT_EQ(state, Pipe<int>::PipeDataState::End);
-      EXPECT_FALSE(val.has_value());
+      auto data = co_await consumer;
+      EXPECT_FALSE(data.has_value());
       co_return;
     });
 
@@ -144,8 +142,7 @@ TEST(PipeTest, ProducerSuspension) {
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
       sequence.push_back("cons_read_1");
-      auto [state1, val1] = co_await consumer;
-      EXPECT_EQ(state1, Pipe<int>::PipeDataState::Data);
+      auto val1 = co_await consumer;
       EXPECT_TRUE(val1.has_value());
       if (!val1.has_value()) {
         co_return;
@@ -153,8 +150,7 @@ TEST(PipeTest, ProducerSuspension) {
       EXPECT_EQ(*val1, 1);
 
       sequence.push_back("cons_read_2");
-      auto [state2, val2] = co_await consumer;
-      EXPECT_EQ(state2, Pipe<int>::PipeDataState::Data);
+      auto val2 = co_await consumer;
       EXPECT_TRUE(val2.has_value());
       if (!val2.has_value()) {
         co_return;
@@ -198,9 +194,8 @@ TEST(PipeTest, ConsumerSuspension) {
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
       sequence.push_back("cons_read_1");
-      auto [state1, val1] = co_await consumer;
+      auto val1 = co_await consumer;
       sequence.push_back("cons_got_1");
-      EXPECT_EQ(state1, Pipe<int>::PipeDataState::Data);
       EXPECT_TRUE(val1.has_value());
       if (!val1.has_value()) {
         co_return;
@@ -208,9 +203,8 @@ TEST(PipeTest, ConsumerSuspension) {
       EXPECT_EQ(*val1, 100);
 
       sequence.push_back("cons_read_2");
-      auto [state2, val2] = co_await consumer;
+      auto val2 = co_await consumer;
       sequence.push_back("cons_got_2");
-      EXPECT_EQ(state2, Pipe<int>::PipeDataState::End);
       EXPECT_FALSE(val2.has_value());
 
       sequence.push_back("cons_done");
@@ -222,7 +216,7 @@ TEST(PipeTest, ConsumerSuspension) {
       co_await producer.Put(100);
 
       sequence.push_back("prod_close");
-      co_await producer.Close();
+      producer.Close();
 
       sequence.push_back("prod_done");
       co_return;
@@ -241,9 +235,9 @@ TEST(PipeTest, ConsumerSuspension) {
   EXPECT_EQ(sequence[2], "cons_got_1");
   EXPECT_EQ(sequence[3], "cons_read_2");
   EXPECT_EQ(sequence[4], "prod_close");
-  EXPECT_EQ(sequence[5], "cons_got_2");
-  EXPECT_EQ(sequence[6], "cons_done");
-  EXPECT_EQ(sequence[7], "prod_done");
+  EXPECT_EQ(sequence[5], "prod_done");
+  EXPECT_EQ(sequence[6], "cons_got_2");
+  EXPECT_EQ(sequence[7], "cons_done");
 }
 
 // 6. Test case: Destruction safety
@@ -283,8 +277,7 @@ TEST(PipeTest, MoveOnlyObject) {
     });
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
-      auto [state, val] = co_await consumer;
-      EXPECT_EQ(state, Pipe<std::unique_ptr<int>>::PipeDataState::Data);
+      auto val = co_await consumer;
       EXPECT_TRUE(val.has_value());
       if (val.has_value()) {
         EXPECT_NE(*val, nullptr);

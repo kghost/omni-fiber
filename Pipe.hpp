@@ -1,5 +1,6 @@
 #pragma once
 
+#include <expected>
 #include <optional>
 #include <utility>
 
@@ -22,12 +23,7 @@ public:
   Pipe(Pipe&&) = delete;
   Pipe& operator=(Pipe&&) = delete;
 
-  enum class PipeDataState {
-    Data,
-    End,
-  };
-
-  using PipeDataType = std::tuple<PipeDataState, std::optional<DataType>>;
+  class PipeClosed {};
 
   class Producer {
   public:
@@ -42,17 +38,16 @@ public:
     void AwaitValue() {}
 
     AwaitableCustom<Producer, SingleAwaitable> Put(DataType&& data) {
-      assert(!_Pipe._Data.has_value());
-      _Pipe._Data.emplace(PipeDataState::Data, std::move(data));
+      assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
+      _Pipe._Data.emplace(std::move(data));
       SingleAwaitable::Fire(_Pipe._AwaitReadContext);
       return AwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
     }
 
-    AwaitableCustom<Producer, SingleAwaitable> Close() {
-      assert(!_Pipe._Data.has_value());
-      _Pipe._Data.emplace(PipeDataState::End, std::nullopt);
+    void Close() {
+      assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
+      _Pipe._IsClosed = true;
       SingleAwaitable::Fire(_Pipe._AwaitReadContext);
-      return AwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
     }
 
   private:
@@ -69,12 +64,16 @@ public:
     Consumer(Consumer&&) = delete;
     Consumer& operator=(Consumer&&) = delete;
 
-    bool AwaitReady() const { return _Pipe._Data.has_value(); }
-    PipeDataType AwaitValue() {
-      assert(_Pipe._Data.has_value());
-      PipeDataType ret = std::move(std::exchange(_Pipe._Data, std::nullopt).value());
-      SingleAwaitable::Fire(_Pipe._AwaitWriteContext);
-      return ret;
+    bool AwaitReady() const { return _Pipe._IsClosed || _Pipe._Data.has_value(); }
+    std::expected<DataType, PipeClosed> AwaitValue() {
+      assert(_Pipe._IsClosed || _Pipe._Data.has_value());
+      if (_Pipe._IsClosed) {
+        return std::unexpected<PipeClosed>{PipeClosed{}};
+      } else {
+        auto ret = std::move(std::exchange(_Pipe._Data, std::nullopt).value());
+        SingleAwaitable::Fire(_Pipe._AwaitWriteContext);
+        return ret;
+      }
     }
 
     AwaitableCustom<Consumer, SingleAwaitable> operator co_await() {
@@ -91,7 +90,8 @@ public:
 private:
   SingleAwaitable::ContextStorage _AwaitReadContext;
   SingleAwaitable::ContextStorage _AwaitWriteContext;
-  std::optional<PipeDataType> _Data;
+  bool _IsClosed = false;
+  std::optional<DataType> _Data;
 };
 
 } // namespace Fiber
