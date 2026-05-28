@@ -6,7 +6,6 @@
 namespace Omni {
 namespace Fiber {
 
-class Fiber;
 class SingleAwaitContext;
 
 // Optimized awaitable base class that only allows one fiber pending on it.
@@ -27,7 +26,6 @@ protected:
   SingleAwaitable& operator=(SingleAwaitable&&) = delete;
 
 public:
-  void DoSchedule();
   void DoAwaitSuspend();
 
 private:

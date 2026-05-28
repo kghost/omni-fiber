@@ -8,7 +8,6 @@
 namespace Omni {
 namespace Fiber {
 
-class Fiber;
 class SharedAwaitContext;
 
 // Awaitables that can be co_awaited by fibers. It should be placed as a temporary object in co_await expression, and
@@ -30,7 +29,6 @@ protected:
   SharedAwaitable& operator=(SharedAwaitable&&) = delete;
 
 public:
-  void DoSchedule() {}
   void DoAwaitSuspend();
 
 private:

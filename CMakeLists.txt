@@ -1,11 +1,3 @@
-cmake_minimum_required(VERSION 3.15)
-
-project(omnifiber
-  VERSION 0.1.0
-  DESCRIPTION "A fiber library using C++20 coroutines and Boost.Asio"
-  LANGUAGES CXX
-)
-
 option(OMNIFIBER_INTERNAL "Build omni-fiber as an internal static library" OFF)
 
 # Standard C++20 is required for coroutines
@@ -37,56 +29,64 @@ if(WIN32)
   list(APPEND SOURCES dllmain.cpp)
 endif()
 
-# Define the library
-add_library(omnifiber STATIC ${SOURCES})
+# Define the libraries (both standard and ASan)
+foreach(suffix "" "_asan")
+  set(target "omnifiber${suffix}")
+  add_library(${target} STATIC ${SOURCES})
 
-# Include directories
-target_include_directories(omnifiber
-  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
-)
+  # Include directories
+  target_include_directories(${target}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+  )
 
-# Compile definitions
-target_compile_definitions(omnifiber
-  PRIVATE
-  OMNIFIBER_EXPORTS
-)
+  # Compile definitions
+  target_compile_definitions(${target}
+    PRIVATE
+    OMNIFIBER_EXPORTS
+  )
 
-# Link dependencies
-target_link_libraries(omnifiber
-  PUBLIC
-  Boost::boost
-  PRIVATE
-  Boost::log
-  Boost::thread
-)
+  # Link dependencies
+  target_link_libraries(${target}
+    PUBLIC
+    Boost::boost
+    PRIVATE
+    Boost::log
+    Boost::thread
+  )
 
-if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-  find_library(DW_LIBRARY NAMES dw REQUIRED)
-  target_link_libraries(omnifiber PRIVATE ${DW_LIBRARY})
-endif()
+  if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    find_library(DW_LIBRARY NAMES dw REQUIRED)
+    target_link_libraries(${target} PRIVATE ${DW_LIBRARY})
+  endif()
 
-# Target properties
-set_target_properties(omnifiber PROPERTIES
-  CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN ON
-  POSITION_INDEPENDENT_CODE ON
-  VERSION ${PROJECT_VERSION}
-  SOVERSION 0
-)
+  # Target properties
+  set_target_properties(${target} PROPERTIES
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
+    POSITION_INDEPENDENT_CODE ON
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 0
+  )
 
-# Compiler specific options
-if(MSVC)
-  target_compile_options(omnifiber PRIVATE /W3 /Zc:preprocessor)
-else()
-  target_compile_options(omnifiber PRIVATE -Wall -Wextra -fvisibility=hidden)
-endif()
+  # Compiler specific options
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W3 /Zc:preprocessor)
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -fvisibility=hidden)
+  endif()
+
+  if(suffix STREQUAL "_asan")
+    target_compile_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=address)
+  endif()
+endforeach()
 
 # Installation (optional but good practice)
 if(NOT OMNIFIBER_INTERNAL)
   include(GNUInstallDirs)
-  install(TARGETS omnifiber
+  install(TARGETS omnifiber omnifiber_asan
     EXPORT omnifiberTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

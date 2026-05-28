@@ -9,8 +9,6 @@
 namespace Omni {
 namespace Fiber {
 
-class SingleAwaitContext;
-
 template <typename Impl> class AwaitableBase {
 protected:
   explicit AwaitableBase() = default;
@@ -24,10 +22,7 @@ protected:
 public:
   bool IsSuspended() const noexcept { return _Owner.has_value(); }
 
-  void Schedule(this Impl& self) {
-    self.DoSchedule();
-    self._Owner.value().get().Schedule();
-  }
+  void Schedule(this Impl& self) { self._Owner.value().get().Schedule(); }
 
   template <typename PromiseType> void await_suspend(this Impl& self, std::coroutine_handle<PromiseType> caller) {
     auto& promise = caller.promise();

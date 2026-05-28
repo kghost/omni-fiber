@@ -40,8 +40,6 @@ TEST(PipeTest, BasicPutAndGet) {
   Manager manager(executor);
 
   Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
 
   bool executed = false;
 
@@ -49,6 +47,7 @@ TEST(PipeTest, BasicPutAndGet) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
+      auto producer = pipe.GetProducer();
       EXPECT_TRUE(producer.AwaitReady());
       co_await producer.Put(42);
       EXPECT_TRUE(producer.AwaitReady());
@@ -57,6 +56,7 @@ TEST(PipeTest, BasicPutAndGet) {
     });
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
+      auto consumer = pipe.GetConsumer();
       EXPECT_TRUE(consumer.AwaitReady());
       auto data = co_await consumer;
       EXPECT_TRUE(data.has_value());
