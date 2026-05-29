@@ -52,6 +52,12 @@ public:
     return _Data.has_value();
   }
 
+  template <typename U = DataType>
+    requires(!std::is_void_v<U>)
+  DataType Get() const {
+    return _Data.value();
+  }
+
   template <typename T, typename U = DataType>
     requires(!std::is_void_v<U>)
   OMNIFIBER_API void Fire(T&& data) {
