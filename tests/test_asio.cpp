@@ -97,7 +97,7 @@ TEST(AsioTest, TimerCancellation) {
   EXPECT_TRUE(interrupterExecuted);
 }
 
-// Test Case: Cancellation Slot Integration
+// Test Case: Cancellation slot Integration
 TEST(AsioTest, CancellationSlotIntegration) {
   boost::asio::io_context io;
   AsioExecutor executor(io);
@@ -112,8 +112,7 @@ TEST(AsioTest, CancellationSlotIntegration) {
 
     Fiber& current = co_await GetCurrentFiber();
     auto child = current.Spawn("child", [timer, sig, &childExecuted]() -> Coroutine<void> {
-      auto [ec] = co_await timer->async_wait(
-          boost::asio::bind_cancellation_slot(sig->slot(), AsioUseFiber));
+      auto [ec] = co_await timer->async_wait(boost::asio::bind_cancellation_slot(sig->slot(), AsioUseFiber));
       EXPECT_EQ(ec, boost::asio::error::operation_aborted);
       childExecuted = true;
       co_return;
