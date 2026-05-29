@@ -31,7 +31,7 @@ endif()
 
 # Define the libraries (both standard and ASan)
 foreach(suffix "" "-asan")
-  set(target "omnifiber${suffix}")
+  set(target "omni-fiber${suffix}")
   add_library(${target} STATIC ${SOURCES})
 
   # Include directories
@@ -85,8 +85,8 @@ endforeach()
 # Installation (optional but good practice)
 if(NOT OMNIFIBER_INTERNAL)
   include(GNUInstallDirs)
-  install(TARGETS omnifiber omnifiber-asan
-    EXPORT omnifiberTargets
+  install(TARGETS omni-fiber omni-fiber-asan
+    EXPORT OmniFiberTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -106,13 +106,13 @@ if(NOT OMNIFIBER_INTERNAL)
     Manager.hpp
     Select.hpp
     shared.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omnifiber
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omni-fiber
   )
 
-  install(EXPORT omnifiberTargets
-    FILE omnifiberConfig.cmake
-    NAMESPACE omnifiber::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/omnifiber
+  install(EXPORT OmniFiberTargets
+    FILE OmniFiberConfig.cmake
+    NAMESPACE OmniFiber::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/omni-fiber
   )
 endif()
 
