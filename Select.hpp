@@ -1,28 +1,30 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 
 #include "AwaitableBase.hpp"
+#include "Coroutine.hpp"
 #include "Fiber.hpp"
 
 namespace Omni {
 namespace Fiber {
 
-template <typename T> std::true_type IsAwaitableBaseHelper(const AwaitableBase<T>*);
-std::false_type IsAwaitableBaseHelper(...);
+template <typename Awaiter> struct AwaiterResult {
+  using RawType = decltype(std::declval<Awaiter>().await_resume());
+  using type = std::conditional_t<std::is_void_v<RawType>, bool, std::optional<RawType>>;
+};
 
-template <typename T>
-concept DerivedFromAwaitableBase = decltype(IsAwaitableBaseHelper(std::declval<std::decay_t<T>*>()))::value;
+template <typename Awaiter> using AwaiterResultT = typename AwaiterResult<Awaiter>::type;
 
 template <typename... Pairs> class SelectAwaiter : public AwaitableBase<SelectAwaiter<Pairs...>> {
 private:
   template <typename Pair> using AwaiterType = decltype(std::declval<Pair>().first.operator co_await());
-  template <typename Pair> using CallbackType = std::decay_t<decltype(std::declval<Pair>().second)>;
 
-  static_assert((DerivedFromAwaitableBase<AwaiterType<Pairs>> && ...),
+  static_assert(((requires { typename AwaiterType<Pairs>::AwaitableBaseImpl; }) && ...),
                 "All awaiters in Select must derive from AwaitableBase");
 
   template <typename Pair> struct GetAwaiter {
@@ -31,7 +33,7 @@ private:
   };
 
 public:
-  explicit SelectAwaiter(Pairs... pairs) : _Awaiters(GetAwaiter{pairs}...), _Callbacks(std::move(pairs.second)...) {}
+  explicit SelectAwaiter(Pairs&... pairs) : _Awaiters(GetAwaiter<Pairs>{pairs}...) {}
 
   bool await_ready() const {
     return std::apply([](const auto&... awaiter) { return (awaiter.await_ready() || ...); }, _Awaiters);
@@ -42,28 +44,31 @@ public:
     std::apply([&](auto&... awaiter) { ((awaiter.SetOwner(parent), awaiter.DoAwaitSuspend()), ...); }, _Awaiters);
   }
 
-  void await_resume() {
-    auto resume = [](auto& awaiter, auto& callback) -> void {
+  std::tuple<AwaiterResultT<AwaiterType<Pairs>>...> await_resume() {
+    auto resume = []<typename Awaiter>(Awaiter& awaiter) -> AwaiterResultT<Awaiter> {
       if (awaiter.await_ready()) {
         if constexpr (std::is_void_v<decltype(awaiter.await_resume())>) {
-          static_assert(std::is_void_v<std::invoke_result_t<decltype(callback)>>, "Callback must return void");
           awaiter.await_resume();
-          callback();
+          return true;
         } else {
-          static_assert(std::is_void_v<std::invoke_result_t<decltype(callback), decltype(awaiter.await_resume())>>,
-                        "Callback must return void");
-          callback(awaiter.await_resume());
+          return awaiter.await_resume();
+        }
+      } else {
+        if constexpr (std::is_void_v<decltype(awaiter.await_resume())>) {
+          return false;
+        } else {
+          return std::nullopt;
         }
       }
     };
-    [&]<size_t... Is>(std::index_sequence<Is...>) {
-      (resume(std::get<Is>(_Awaiters), std::get<Is>(_Callbacks)), ...);
+
+    return [&]<size_t... Is>(std::index_sequence<Is...>) {
+      return std::make_tuple(resume(std::get<Is>(_Awaiters))...);
     }(std::index_sequence_for<Pairs...>{});
   }
 
 private:
   std::tuple<AwaiterType<Pairs>...> _Awaiters;
-  std::tuple<CallbackType<Pairs>...> _Callbacks;
 };
 
 template <typename Awaitable, typename Callback> auto SelectPair(Awaitable&& awaitable, Callback&& callback) {
@@ -71,8 +76,37 @@ template <typename Awaitable, typename Callback> auto SelectPair(Awaitable&& awa
                                                         std::forward<Callback>(callback));
 }
 
-template <typename... Pairs> auto Select(Pairs&&... pairs) {
-  return SelectAwaiter<Pairs...>(std::forward<Pairs>(pairs)...);
+template <typename... Pairs> Coroutine<void> Select(Pairs... pairs) {
+  auto results = co_await SelectAwaiter<Pairs...>(pairs...);
+
+  auto pairs_tuple = std::forward_as_tuple(pairs...);
+
+  co_await [&]<size_t... Is>(std::index_sequence<Is...>) -> Coroutine<void> {
+    auto run_one = []<typename Pair, typename Result>(Pair& pair, Result& result) -> Coroutine<void> {
+      auto& callback = pair.second;
+      if constexpr (std::is_same_v<std::decay_t<Result>, bool>) {
+        if (result) {
+          if constexpr (requires { typename decltype(callback())::CoroutineReturnType; }) {
+            co_await callback();
+          } else {
+            callback();
+          }
+        }
+      } else {
+        if (result.has_value()) {
+          auto&& val = std::move(*result);
+          if constexpr (requires { typename decltype(callback(std::move(val)))::CoroutineReturnType; }) {
+            co_await callback(std::move(val));
+          } else {
+            callback(std::move(val));
+          }
+        }
+      }
+      co_return;
+    };
+
+    (co_await run_one(std::get<Is>(pairs_tuple), std::get<Is>(results)), ...);
+  }(std::index_sequence_for<Pairs...>{});
 }
 
 } // namespace Fiber

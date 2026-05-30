@@ -267,3 +267,106 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
   EXPECT_EQ(sequence[0], "pipe_temp_val_" + std::to_string(200));
 }
 
+// 8. Test case: Coroutine callbacks with single event
+TEST(SelectTest, CoroutineCallbacks) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event<> event1;
+  Event<int> event2;
+  Event<> done_event1;
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
+      sequence.push_back("fire1");
+      event1.Fire();
+      co_await done_event1;
+      sequence.push_back("fire2");
+      event2.Fire(42);
+      co_return;
+    });
+
+    sequence.push_back("select_start");
+    co_await Select(SelectPair(event1,
+                               [&]() -> Coroutine<void> {
+                                 sequence.push_back("coro_callback1_start");
+                                 done_event1.Fire();
+                                 boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+                                 co_await timer.async_wait(AsioUseFiber);
+                                 sequence.push_back("coro_callback1_end");
+                                 co_return;
+                               }),
+                    SelectPair(event2, [&](int result) -> Coroutine<void> {
+                      sequence.push_back("coro_callback2_val_" + std::to_string(result));
+                      co_return;
+                    }));
+    sequence.push_back("select_done");
+
+    co_await current.Join(notifier);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 6);
+  EXPECT_EQ(sequence[0], "select_start");
+  EXPECT_EQ(sequence[1], "fire1");
+  EXPECT_EQ(sequence[2], "coro_callback1_start");
+  EXPECT_EQ(sequence[3], "fire2");
+  EXPECT_EQ(sequence[4], "coro_callback1_end");
+  EXPECT_EQ(sequence[5], "select_done");
+}
+
+// 9. Test case: Coroutine callbacks executed sequentially
+TEST(SelectTest, CoroutineCallbacksSimultaneous) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event<> event1;
+  Event<int> event2;
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
+      sequence.push_back("fire_both");
+      event1.Fire();
+      event2.Fire(100);
+      co_return;
+    });
+
+    sequence.push_back("select_start");
+    co_await Select(SelectPair(event1,
+                               [&]() -> Coroutine<void> {
+                                 sequence.push_back("coro_callback1_start");
+                                 boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+                                 co_await timer.async_wait(AsioUseFiber);
+                                 sequence.push_back("coro_callback1_end");
+                                 co_return;
+                               }),
+                    SelectPair(event2, [&](int result) -> Coroutine<void> {
+                      sequence.push_back("coro_callback2_val_" + std::to_string(result));
+                      co_return;
+                    }));
+    sequence.push_back("select_done");
+
+    co_await current.Join(notifier);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 6);
+  EXPECT_EQ(sequence[0], "select_start");
+  EXPECT_EQ(sequence[1], "fire_both");
+  EXPECT_EQ(sequence[2], "coro_callback1_start");
+  EXPECT_EQ(sequence[3], "coro_callback1_end");
+  EXPECT_EQ(sequence[4], "coro_callback2_val_100");
+  EXPECT_EQ(sequence[5], "select_done");
+}

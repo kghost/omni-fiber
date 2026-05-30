@@ -12,6 +12,7 @@
 #include "GetCurrentFiber.hpp"
 #include "Manager.hpp"
 #include "RemoteCall.hpp"
+#include "Select.hpp"
 
 using namespace Omni::Fiber;
 
@@ -248,7 +249,6 @@ TEST(RemoteCallTest, ServerShutdown) {
   EXPECT_TRUE(server_exited);
 }
 
-#if 0
 // 7. Test case: Select Integration
 TEST(RemoteCallTest, SelectIntegration) {
   boost::asio::io_context io;
@@ -265,7 +265,17 @@ TEST(RemoteCallTest, SelectIntegration) {
     auto select_loop = current.Spawn("select_loop", [&]() -> Coroutine<void> {
       bool loop_active = true;
       while (loop_active) {
-        co_await Select(SelectPair(rc.GetServiceAwaitor(), [&rc](auto req) {}), SelectPair(event1, [&]() {
+        co_await Select(SelectPair(rc.GetServiceAwaitor(),
+                                   [&](auto reqOpt) -> Coroutine<void> {
+                                     if (reqOpt.has_value()) {
+                                       co_await reqOpt.value()();
+                                       co_return;
+                                     } else {
+                                       loop_active = false;
+                                       co_return;
+                                     }
+                                   }),
+                        SelectPair(event1, [&]() {
                           sequence.push_back("event1_fired");
                           loop_active = false;
                         }));
@@ -295,4 +305,3 @@ TEST(RemoteCallTest, SelectIntegration) {
   EXPECT_EQ(sequence[0], "client_rpc_returned");
   EXPECT_EQ(sequence[1], "event1_fired");
 }
-#endif

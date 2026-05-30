@@ -20,6 +20,7 @@ protected:
   AwaitableBase& operator=(AwaitableBase&&) = delete;
 
 public:
+  using AwaitableBaseImpl = Impl;
   bool IsSuspended() const noexcept { return _Owner.has_value(); }
   void SetOwner(Fiber& owner) { _Owner = owner; }
   Fiber& GetOwner() const { return _Owner.value().get(); }
