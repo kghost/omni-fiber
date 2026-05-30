@@ -267,10 +267,7 @@ TEST(RemoteCallTest, SelectIntegration) {
       while (loop_active) {
         co_await Select(SelectPair(rc.GetServiceAwaitor(),
                                    [&](auto reqOpt) -> Coroutine<void> {
-                                     if (reqOpt.has_value()) {
-                                       co_await reqOpt.value()();
-                                       co_return;
-                                     } else {
+                                     if (!co_await RemoteCall::HandleRequest(reqOpt)) {
                                        loop_active = false;
                                        co_return;
                                      }

@@ -51,6 +51,16 @@ public:
   }
 
   auto GetServiceAwaitor() { return _Pipe.GetConsumer(); }
+  static Coroutine<bool> HandleRequest(decltype(std::declval<SharedPipe<std::move_only_function<Coroutine<void>()>>>()
+                                                    .GetConsumer()
+                                                    .AwaitValue())& reqOpt) {
+    if (reqOpt.has_value()) {
+      co_await reqOpt.value()();
+      co_return true;
+    } else {
+      co_return false;
+    }
+  }
 
   Coroutine<void> Close() { co_await _Pipe.GetProducer().Close(); }
 
