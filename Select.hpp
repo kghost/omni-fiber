@@ -67,16 +67,12 @@ private:
 };
 
 template <typename Awaitable, typename Callback> auto SelectPair(Awaitable&& awaitable, Callback&& callback) {
-  return std::pair<Awaitable&&, std::decay_t<Callback>>(std::forward<Awaitable>(awaitable), std::forward<Callback>(callback));
+  return std::pair<Awaitable&&, std::decay_t<Callback>>(std::forward<Awaitable>(awaitable),
+                                                        std::forward<Callback>(callback));
 }
 
 template <typename... Pairs> auto Select(Pairs&&... pairs) {
   return SelectAwaiter<Pairs...>(std::forward<Pairs>(pairs)...);
-}
-
-template <typename... Pairs> auto Select(std::tuple<Pairs...>&& pairsTuple) {
-  return std::apply([](auto&&... args) { return Select(std::forward<decltype(args)>(args)...); },
-                    std::move(pairsTuple));
 }
 
 } // namespace Fiber

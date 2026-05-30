@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 4.3)
+project(omni-fiber)
+
 option(OMNIFIBER_INTERNAL "Build omni-fiber as an internal static library" OFF)
 
 # Standard C++20 is required for coroutines
@@ -104,6 +107,8 @@ if(NOT OMNIFIBER_INTERNAL)
     FiberFinishNotifier.hpp
     GetCurrentFiber.hpp
     Manager.hpp
+    Pipe.hpp
+    RemoteCall.hpp
     Select.hpp
     shared.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omni-fiber

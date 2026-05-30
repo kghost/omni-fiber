@@ -92,7 +92,7 @@ TEST(PipeTest, BasicClose) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
-      producer.Close();
+      co_await producer.Close();
       executed = true;
       co_return;
     });
@@ -215,7 +215,7 @@ TEST(PipeTest, ConsumerSuspension) {
       co_await producer.Put(100);
 
       sequence.push_back("prod_close");
-      producer.Close();
+      co_await producer.Close();
 
       sequence.push_back("prod_done");
       co_return;

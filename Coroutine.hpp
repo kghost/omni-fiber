@@ -79,6 +79,7 @@ private:
   };
 
 public:
+  using CoroutineReturnType = RetType;
   using promise_type = std::conditional<std::is_void_v<RetType>, PromiseVoid, PromiseNonVoid>::type;
   explicit Coroutine(std::coroutine_handle<promise_type> callee) : _Callee(callee) {}
   ~Coroutine() {

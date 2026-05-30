@@ -8,27 +8,29 @@
 #include <boost/log/trivial.hpp>
 
 #include "AwaitableCustom.hpp"
+#include "SharedAwaitContext.hpp"
+#include "SharedAwaitable.hpp"
 #include "SingleAwaitContext.hpp"
 #include "SingleAwaitable.hpp"
 
 namespace Omni {
 namespace Fiber {
 
-// A single consumer single producer pipe.
-template <typename DataType> class Pipe final {
+// A single consumer multiple producer pipe.
+template <typename DataType> class SharedPipe final {
 public:
-  explicit Pipe() = default;
+  explicit SharedPipe() = default;
 
-  Pipe(Pipe&) = delete;
-  Pipe& operator=(Pipe&) = delete;
-  Pipe(Pipe&&) = delete;
-  Pipe& operator=(Pipe&&) = delete;
+  SharedPipe(SharedPipe&) = delete;
+  SharedPipe& operator=(SharedPipe&) = delete;
+  SharedPipe(SharedPipe&&) = delete;
+  SharedPipe& operator=(SharedPipe&&) = delete;
 
   class PipeClosed {};
 
   class Producer {
   public:
-    explicit Producer(Pipe& pipe) : _Pipe(pipe) {}
+    explicit Producer(SharedPipe& pipe) : _Pipe(pipe) {}
 
     Producer(Producer&) = delete;
     Producer& operator=(Producer&) = delete;
@@ -38,27 +40,28 @@ public:
     bool AwaitReady() const { return !_Pipe._Data.has_value(); }
     void AwaitValue() {}
 
-    AwaitableCustom<Producer, SingleAwaitable> Put(DataType&& data) {
+    Coroutine<void> Put(DataType&& data) {
+      co_await AwaitableCustom<Producer, SharedAwaitable>(_Pipe._AwaitWriteContext, *this);
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._Data.emplace(std::move(data));
       SingleAwaitable::Fire(_Pipe._AwaitReadContext);
-      return AwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
+      co_await AwaitableCustom<Producer, SharedAwaitable>(_Pipe._AwaitWriteContext, *this);
     }
 
     Coroutine<void> Close() {
+      co_await AwaitableCustom<Producer, SharedAwaitable>(_Pipe._AwaitWriteContext, *this);
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._IsClosed = true;
       SingleAwaitable::Fire(_Pipe._AwaitReadContext);
-      co_return;
     }
 
   private:
-    Pipe& _Pipe;
+    SharedPipe& _Pipe;
   };
 
   class Consumer {
   public:
-    explicit Consumer(Pipe& pipe) : _Pipe(pipe) {}
+    explicit Consumer(SharedPipe& pipe) : _Pipe(pipe) {}
     ~Consumer() {}
 
     Consumer(Consumer&) = delete;
@@ -71,7 +74,7 @@ public:
       assert(_Pipe._IsClosed || _Pipe._Data.has_value());
       if (_Pipe._Data.has_value()) {
         auto ret = std::move(std::exchange(_Pipe._Data, std::nullopt).value());
-        SingleAwaitable::Fire(_Pipe._AwaitWriteContext);
+        SharedAwaitable::Fire(_Pipe._AwaitWriteContext);
         return ret;
       } else if (_Pipe._IsClosed) {
         return std::unexpected<PipeClosed>{PipeClosed{}};
@@ -85,7 +88,7 @@ public:
     }
 
   private:
-    Pipe& _Pipe;
+    SharedPipe& _Pipe;
   };
 
   Producer GetProducer() { return Producer(*this); }
@@ -93,7 +96,7 @@ public:
 
 private:
   SingleAwaitable::ContextStorage _AwaitReadContext;
-  SingleAwaitable::ContextStorage _AwaitWriteContext;
+  SharedAwaitable::ContextStorage _AwaitWriteContext;
   bool _IsClosed = false;
   std::optional<DataType> _Data;
 };

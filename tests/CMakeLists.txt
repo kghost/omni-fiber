@@ -1,3 +1,4 @@
+enable_testing()
 find_package(GTest REQUIRED)
 find_package(Boost REQUIRED COMPONENTS log thread)
 
@@ -50,4 +51,10 @@ target_link_libraries(omnifiber_test_select PRIVATE omni-fiber-asan GTest::gtest
 target_compile_options(omnifiber_test_select PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 target_link_options(omnifiber_test_select PRIVATE -fsanitize=address)
 gtest_discover_tests(omnifiber_test_select)
+
+add_executable(omnifiber_test_remote_call test_remote_call.cpp)
+target_link_libraries(omnifiber_test_remote_call PRIVATE omni-fiber-asan GTest::gtest_main Boost::log Boost::thread)
+target_compile_options(omnifiber_test_remote_call PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(omnifiber_test_remote_call PRIVATE -fsanitize=address)
+gtest_discover_tests(omnifiber_test_remote_call)
 
