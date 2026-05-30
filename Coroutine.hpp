@@ -74,7 +74,9 @@ private:
 
   class PromiseNonVoid final : public PromiseBase<PromiseNonVoid> {
   public:
-    template <typename T> void return_value(T&& ret) { this->_RetState = std::forward<T>(ret); }
+    template <typename T> void return_value(T&& ret) {
+      this->_RetState = typename decltype(this->_RetState)::value_type(std::in_place, std::forward<T>(ret));
+    }
     friend class Coroutine;
   };
 
