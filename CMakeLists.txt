@@ -20,9 +20,9 @@ find_package(Boost REQUIRED COMPONENTS log)
 set(SOURCES
   Fiber.cpp
   SharedAwaitContext.cpp
-  SharedAwaitable.cpp
+  SharedAwaiter.cpp
   SingleAwaitContext.cpp
-  SingleAwaitable.cpp
+  SingleAwaiter.cpp
   Manager.cpp
   SymbolResolver.cpp
 )
@@ -103,7 +103,7 @@ if(NOT OMNIFIBER_INTERNAL)
     EventQueue.hpp
     Executor.hpp
     Fiber.hpp
-    SharedAwaitable.hpp
+    SharedAwaiter.hpp
     FiberFinishNotifier.hpp
     GetCurrentFiber.hpp
     Manager.hpp

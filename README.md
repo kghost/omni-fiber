@@ -142,7 +142,7 @@ if (res.has_value()) {
 ```
 
 #### `Select`
-Multiplexes multiple awaitables deriving from `AwaitableBase` (e.g., events, pipes).
+Multiplexes multiple awaitables deriving from `AwaiterBase` (e.g., events, pipes).
 ```cpp
 #include <omnifiber/Select.hpp>
 

@@ -4,9 +4,9 @@
 #include <sys/epoll.h>
 #include <type_traits>
 
-#include "AwaitableCustom.hpp"
+#include "AwaiterCustom.hpp"
 #include "SingleAwaitContext.hpp"
-#include "SingleAwaitable.hpp"
+#include "SingleAwaiter.hpp"
 #include "shared.h"
 
 namespace Omni {
@@ -32,7 +32,7 @@ public:
     requires(std::is_void_v<U>)
   OMNIFIBER_API void Fire() {
     _Data = true;
-    SingleAwaitable::Fire(_AwaitContext);
+    SingleAwaiter::Fire(_AwaitContext);
   }
 
   template <typename U = DataType>
@@ -56,7 +56,7 @@ public:
     requires(!std::is_void_v<U>)
   OMNIFIBER_API void Fire(T&& data) {
     _Data.emplace(std::forward<T>(data));
-    SingleAwaitable::Fire(_AwaitContext);
+    SingleAwaiter::Fire(_AwaitContext);
   }
 
   template <typename U = DataType>
@@ -71,8 +71,8 @@ public:
     return std::move(_Data.value());
   }
 
-  OMNIFIBER_API AwaitableCustom<OneshotEvent, SingleAwaitable> operator co_await() {
-    return AwaitableCustom<OneshotEvent, SingleAwaitable>(_AwaitContext, *this);
+  OMNIFIBER_API AwaiterCustom<OneshotEvent, SingleAwaiter> operator co_await() {
+    return AwaiterCustom<OneshotEvent, SingleAwaiter>(_AwaitContext, *this);
   }
 
 private:
@@ -84,7 +84,7 @@ private:
     }
   }
 
-  SingleAwaitable::ContextStorage _AwaitContext;
+  SingleAwaiter::ContextStorage _AwaitContext;
   std::conditional_t<std::is_void_v<DataType>, bool, std::optional<DataType>> _Data = InitializeData();
 };
 

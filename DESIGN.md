@@ -100,10 +100,10 @@ OmniFiber implements structured parent-child relationships between fibers to pre
   ```cpp
   _FinishedChildren.insert(*it);
   _Children.erase(it);
-  SharedAwaitable::Fire(_JoinAwaitContext);
+  SharedAwaiter::Fire(_JoinAwaitContext);
   ```
 - **The Cooperative Wait Primitives**:
-  - `Wait(until_callback)`: Cooperatively yields the active fiber using `co_await AwaitableAlwaysSuspend<SharedAwaitable>(_JoinAwaitContext)` in a loop until the boolean condition `until_callback()` is satisfied.
+  - `Wait(until_callback)`: Cooperatively yields the active fiber using `co_await AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext)` in a loop until the boolean condition `until_callback()` is satisfied.
   - `Join(child)`: Waits until `_FinishedChildren` contains the targeted child fiber, erases it, and checks for exceptions. If the child failed, it propagates the error by throwing a `FiberException` wrapping the original exception.
   - `WaitFor()`: Cooperatively yields until `_FinishedChildren` is not empty, pops the first completed child, checks for exceptions, and returns the `std::shared_ptr<Fiber>` child pointer.
   - `WaitAll()`: Loops `WaitFor()` until both `_Children` and `_FinishedChildren` are completely empty.
@@ -121,7 +121,7 @@ sequenceDiagram
     Child->>Child: Finishes execution
     Child->>Parent: OnChildFinished(Child)
     Note over Parent: Parent moves Child from _Children to _FinishedChildren
-    Parent->>PContext: SharedAwaitable::Fire(_JoinAwaitContext)
+    Parent->>PContext: SharedAwaiter::Fire(_JoinAwaitContext)
     Note over Parent: Parent fiber is scheduled & resumed.<br/>Condition is met.
     Parent->>Parent: Erase Child from _FinishedChildren
     Note over Parent: Join completes. Parent resumes.
@@ -171,11 +171,11 @@ template <typename... Results> struct async_result<Omni::Fiber::AsioUseFiberType
 
 ## 6. Synchronization & Multiplexing Primitives
 
-OmniFiber provides cooperative synchronization tools to coordinate independent fibers without blocking system threads. All awaitables delegate wait queue management to the centralized `SingleAwaitable` / `SharedAwaitable` framework rather than holding raw lists of suspended fibers.
+OmniFiber provides cooperative synchronization tools to coordinate independent fibers without blocking system threads. All awaitables delegate wait queue management to the centralized `SingleAwaiter` / `SharedAwaiter` framework rather than holding raw lists of suspended fibers.
 
 ### `Event<DataType = void>`
 A cooperative signal that supports both void and value-bearing states:
-- When a fiber calls `co_await event`, it suspends cooperatively on a `SharedAwaitable` context if the event has not been fired yet.
+- When a fiber calls `co_await event`, it suspends cooperatively on a `SharedAwaiter` context if the event has not been fired yet.
 - When `Fire(value)` is called, the event stores the value and wakes up all waiting fibers. Subsequent awaits return the cached value immediately.
 
 ### `Signal`

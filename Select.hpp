@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "AwaitableBase.hpp"
+#include "AwaiterBase.hpp"
 #include "Coroutine.hpp"
 #include "Fiber.hpp"
 
@@ -20,12 +20,12 @@ template <typename Awaiter> struct AwaiterResult {
 
 template <typename Awaiter> using AwaiterResultT = typename AwaiterResult<Awaiter>::type;
 
-template <typename... Pairs> class SelectAwaiter : public AwaitableBase<SelectAwaiter<Pairs...>> {
+template <typename... Pairs> class SelectAwaiter : public AwaiterBase<SelectAwaiter<Pairs...>> {
 private:
   template <typename Pair> using AwaiterType = decltype(std::declval<Pair>().first.operator co_await());
 
   static_assert(((requires { typename AwaiterType<Pairs>::AwaitableBaseImpl; }) && ...),
-                "All awaiters in Select must derive from AwaitableBase");
+                "All awaiters in Select must derive from AwaiterBase");
 
   template <typename Pair> struct GetAwaiter {
     Pair& p;

@@ -1,18 +1,18 @@
 #include "SharedAwaitContext.hpp"
 
-#include "SharedAwaitable.hpp"
+#include "SharedAwaiter.hpp"
 
 namespace Omni {
 namespace Fiber {
 
-void SharedAwaitContext::AddFiberAwaitable(SharedAwaitable& awaitable) {
+void SharedAwaitContext::AddFiberAwaitable(SharedAwaiter& awaitable) {
   auto [it, inserted] = _PendingSet.emplace(awaitable, FiberAwaitableState::Waiting);
-  assert(inserted && "Adding a SharedAwaitable that is already in the pending set");
+  assert(inserted && "Adding a SharedAwaiter that is already in the pending set");
 }
 
-void SharedAwaitContext::RemoveFiberAwaitable(SharedAwaitable& awaitable) {
+void SharedAwaitContext::RemoveFiberAwaitable(SharedAwaiter& awaitable) {
   auto n = _PendingSet.erase(awaitable);
-  assert(n == 1 && "Removing a SharedAwaitable that is not in the pending set");
+  assert(n == 1 && "Removing a SharedAwaiter that is not in the pending set");
 }
 
 void SharedAwaitContext::Fire() {

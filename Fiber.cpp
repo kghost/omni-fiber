@@ -5,12 +5,12 @@
 #include <optional>
 #include <utility>
 
-#include "AwaitableAlwaysSuspend.hpp"
+#include "AwaiterAlwaysSuspend.hpp"
 #include "FiberException.hpp"
 #include "GetCurrentFiber.hpp"
 #include "Manager.hpp"
 #include "SharedAwaitContext.hpp"
-#include "SharedAwaitable.hpp"
+#include "SharedAwaiter.hpp"
 
 #ifndef NDEBUG
 #include "SymbolResolver.hpp"
@@ -24,7 +24,7 @@ void Fiber::OnChildFinished(Fiber& child) {
   assert(it != _Children.end());
   _FinishedChildren.insert(*it);
   _Children.erase(it);
-  SharedAwaitable::Fire(_JoinAwaitContext);
+  SharedAwaiter::Fire(_JoinAwaitContext);
 }
 
 Coroutine<void> Fiber::Wait(std::function<bool()> until) {
@@ -33,7 +33,7 @@ Coroutine<void> Fiber::Wait(std::function<bool()> until) {
     if (until()) {
       co_return;
     }
-    co_await AwaitableAlwaysSuspend<SharedAwaitable>(_JoinAwaitContext);
+    co_await AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext);
   }
 }
 

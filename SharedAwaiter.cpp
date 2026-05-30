@@ -1,4 +1,4 @@
-#include "SharedAwaitable.hpp"
+#include "SharedAwaiter.hpp"
 
 #include "Fiber.hpp"
 #include "SharedAwaitContext.hpp"
@@ -6,7 +6,7 @@
 namespace Omni {
 namespace Fiber {
 
-std::shared_ptr<SharedAwaitContext> SharedAwaitable::Get(ContextStorage& storage) {
+std::shared_ptr<SharedAwaitContext> SharedAwaiter::Get(ContextStorage& storage) {
   if (auto handle = storage.lock()) {
     return handle;
   } else {
@@ -16,21 +16,21 @@ std::shared_ptr<SharedAwaitContext> SharedAwaitable::Get(ContextStorage& storage
   }
 }
 
-void SharedAwaitable::Fire(ContextStorage& storage) {
+void SharedAwaiter::Fire(ContextStorage& storage) {
   if (auto handle = storage.lock()) {
     handle->Fire();
   }
 }
 
-SharedAwaitable::SharedAwaitable(ContextStorage& context) : _Context(Get(context)) {}
+SharedAwaiter::SharedAwaiter(ContextStorage& context) : _Context(Get(context)) {}
 
-SharedAwaitable::~SharedAwaitable() {
+SharedAwaiter::~SharedAwaiter() {
   if (this->IsSuspended()) {
     _Context->RemoveFiberAwaitable(*this);
   }
 }
 
-void SharedAwaitable::DoAwaitSuspend() { _Context->AddFiberAwaitable(*this); }
+void SharedAwaiter::DoAwaitSuspend() { _Context->AddFiberAwaitable(*this); }
 
 } // namespace Fiber
 } // namespace Omni

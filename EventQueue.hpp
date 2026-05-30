@@ -2,8 +2,8 @@
 
 #include <queue>
 
-#include "AwaitableCustom.hpp"
-#include "SharedAwaitable.hpp"
+#include "AwaiterCustom.hpp"
+#include "SharedAwaiter.hpp"
 
 #include "shared.h"
 
@@ -24,20 +24,20 @@ public:
   void AwaitValue() {}
   bool AwaitReady() const { return !_Queue.empty(); }
 
-  OMNIFIBER_API AwaitableCustom<EventQueue<Element>, SharedAwaitable> operator co_await() {
-    return AwaitableCustom<EventQueue<Element>, SharedAwaitable>(_AwaitContext, *this);
+  OMNIFIBER_API AwaiterCustom<EventQueue<Element>, SharedAwaiter> operator co_await() {
+    return AwaiterCustom<EventQueue<Element>, SharedAwaiter>(_AwaitContext, *this);
   }
 
   OMNIFIBER_API bool IsEmpty() const { return _Queue.empty(); }
 
   OMNIFIBER_API void Push(Element& element) {
     _Queue.push(element);
-    SharedAwaitable::Fire(_AwaitContext);
+    SharedAwaiter::Fire(_AwaitContext);
   }
 
   OMNIFIBER_API void Push(Element&& element) {
     _Queue.emplace(std::forward<Element>(element));
-    SharedAwaitable::Fire(_AwaitContext);
+    SharedAwaiter::Fire(_AwaitContext);
   }
 
   OMNIFIBER_API Element PopFront() {
@@ -48,7 +48,7 @@ public:
 
 private:
   std::queue<Element> _Queue;
-  SharedAwaitable::ContextStorage _AwaitContext;
+  SharedAwaiter::ContextStorage _AwaitContext;
 };
 
 } // namespace Fiber

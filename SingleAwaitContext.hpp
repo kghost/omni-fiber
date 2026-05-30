@@ -9,7 +9,7 @@
 namespace Omni {
 namespace Fiber {
 
-class SingleAwaitable;
+class SingleAwaiter;
 
 // Optimized context for events where at most one fiber is pending at a time.
 // It avoids dynamic allocation or complex map/tree data structures.
@@ -25,8 +25,8 @@ public:
   SingleAwaitContext(SingleAwaitContext&&) = delete;
   SingleAwaitContext& operator=(SingleAwaitContext&&) = delete;
 
-  OMNIFIBER_API void AddFiberAwaitable(SingleAwaitable& awaitable);
-  OMNIFIBER_API void RemoveFiberAwaitable(SingleAwaitable& awaitable);
+  OMNIFIBER_API void AddFiberAwaitable(SingleAwaiter& awaitable);
+  OMNIFIBER_API void RemoveFiberAwaitable(SingleAwaiter& awaitable);
   OMNIFIBER_API void Fire();
 
 private:
@@ -36,7 +36,7 @@ private:
     Notified // Fiber notified.
   };
 
-  std::optional<std::reference_wrapper<SingleAwaitable>> _PendingAwaitable;
+  std::optional<std::reference_wrapper<SingleAwaiter>> _PendingAwaitable;
   FiberAwaitableState _State = FiberAwaitableState::None;
 };
 

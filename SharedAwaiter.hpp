@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "AwaitableBase.hpp"
+#include "AwaiterBase.hpp"
 #include "shared.h"
 
 namespace Omni {
@@ -12,7 +12,7 @@ class SharedAwaitContext;
 
 // Awaitables that can be co_awaited by fibers. It should be placed as a temporary object in co_await expression, and
 // destroyed after the co_await expression is evaluated. Never hold it to an lvalue or a member variable.
-class SharedAwaitable : public AwaitableBase<SharedAwaitable> {
+class SharedAwaiter : public AwaiterBase<SharedAwaiter> {
 public:
   using ContextStorage = std::weak_ptr<SharedAwaitContext>;
 
@@ -20,13 +20,13 @@ public:
   static void Fire(ContextStorage& context);
 
 protected:
-  OMNIFIBER_API explicit SharedAwaitable(ContextStorage& context);
-  OMNIFIBER_API ~SharedAwaitable();
+  OMNIFIBER_API explicit SharedAwaiter(ContextStorage& context);
+  OMNIFIBER_API ~SharedAwaiter();
 
-  SharedAwaitable(const SharedAwaitable&) = delete;
-  SharedAwaitable& operator=(const SharedAwaitable&) = delete;
-  SharedAwaitable(SharedAwaitable&&) = delete;
-  SharedAwaitable& operator=(SharedAwaitable&&) = delete;
+  SharedAwaiter(const SharedAwaiter&) = delete;
+  SharedAwaiter& operator=(const SharedAwaiter&) = delete;
+  SharedAwaiter(SharedAwaiter&&) = delete;
+  SharedAwaiter& operator=(SharedAwaiter&&) = delete;
 
 public:
   void DoAwaitSuspend();

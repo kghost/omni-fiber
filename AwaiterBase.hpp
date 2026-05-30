@@ -9,15 +9,15 @@
 namespace Omni {
 namespace Fiber {
 
-template <typename Impl> class AwaitableBase {
+template <typename Impl> class AwaiterBase {
 protected:
-  explicit AwaitableBase() = default;
-  ~AwaitableBase() = default;
+  explicit AwaiterBase() = default;
+  ~AwaiterBase() = default;
 
-  AwaitableBase(const AwaitableBase&) = delete;
-  AwaitableBase& operator=(const AwaitableBase&) = delete;
-  AwaitableBase(AwaitableBase&&) = delete;
-  AwaitableBase& operator=(AwaitableBase&&) = delete;
+  AwaiterBase(const AwaiterBase&) = delete;
+  AwaiterBase& operator=(const AwaiterBase&) = delete;
+  AwaiterBase(AwaiterBase&&) = delete;
+  AwaiterBase& operator=(AwaiterBase&&) = delete;
 
 public:
   using AwaitableBaseImpl = Impl;

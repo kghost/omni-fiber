@@ -5,11 +5,11 @@
 namespace Omni {
 namespace Fiber {
 
-template <typename Target, typename BaseAwaitable> class AwaitableCustom final : public BaseAwaitable {
+template <typename Target, typename BaseAwaitable> class AwaiterCustom final : public BaseAwaitable {
 public:
-  OMNIFIBER_API explicit AwaitableCustom(BaseAwaitable::ContextStorage& storage, Target& target)
+  OMNIFIBER_API explicit AwaiterCustom(BaseAwaitable::ContextStorage& storage, Target& target)
       : BaseAwaitable(storage), _Target(target) {}
-  OMNIFIBER_API ~AwaitableCustom() {}
+  OMNIFIBER_API ~AwaiterCustom() {}
 
   bool await_ready() const noexcept { return _Target.AwaitReady(); }
   decltype(auto) await_resume() { return _Target.AwaitValue(); }

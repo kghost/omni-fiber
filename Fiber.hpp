@@ -23,7 +23,7 @@ namespace Omni {
 namespace Fiber {
 
 class Manager;
-class SingleAwaitable;
+class SingleAwaiter;
 class SharedAwaitContext;
 
 class Fiber {
@@ -127,7 +127,7 @@ public:
 
 private:
   friend class Manager;
-  template <typename Impl> friend class AwaitableBase;
+  template <typename Impl> friend class AwaiterBase;
   friend boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);
 
   class ChildFiberFinishNotifier : public FiberFinishNotifier {

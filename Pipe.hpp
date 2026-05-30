@@ -7,9 +7,9 @@
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
 
-#include "AwaitableCustom.hpp"
+#include "AwaiterCustom.hpp"
 #include "SingleAwaitContext.hpp"
-#include "SingleAwaitable.hpp"
+#include "SingleAwaiter.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -38,17 +38,17 @@ public:
     bool AwaitReady() const { return !_Pipe._Data.has_value(); }
     void AwaitValue() {}
 
-    AwaitableCustom<Producer, SingleAwaitable> Put(DataType&& data) {
+    AwaiterCustom<Producer, SingleAwaiter> Put(DataType&& data) {
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._Data.emplace(std::move(data));
-      SingleAwaitable::Fire(_Pipe._AwaitReadContext);
-      return AwaitableCustom<Producer, SingleAwaitable>(_Pipe._AwaitWriteContext, *this);
+      SingleAwaiter::Fire(_Pipe._AwaitReadContext);
+      return AwaiterCustom<Producer, SingleAwaiter>(_Pipe._AwaitWriteContext, *this);
     }
 
     Coroutine<void> Close() {
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._IsClosed = true;
-      SingleAwaitable::Fire(_Pipe._AwaitReadContext);
+      SingleAwaiter::Fire(_Pipe._AwaitReadContext);
       co_return;
     }
 
@@ -71,7 +71,7 @@ public:
       assert(_Pipe._IsClosed || _Pipe._Data.has_value());
       if (_Pipe._Data.has_value()) {
         auto ret = std::move(std::exchange(_Pipe._Data, std::nullopt).value());
-        SingleAwaitable::Fire(_Pipe._AwaitWriteContext);
+        SingleAwaiter::Fire(_Pipe._AwaitWriteContext);
         return ret;
       } else if (_Pipe._IsClosed) {
         return std::unexpected<PipeClosed>{PipeClosed{}};
@@ -80,8 +80,8 @@ public:
       }
     }
 
-    AwaitableCustom<Consumer, SingleAwaitable> operator co_await() {
-      return AwaitableCustom<Consumer, SingleAwaitable>(_Pipe._AwaitReadContext, *this);
+    AwaiterCustom<Consumer, SingleAwaiter> operator co_await() {
+      return AwaiterCustom<Consumer, SingleAwaiter>(_Pipe._AwaitReadContext, *this);
     }
 
   private:
@@ -92,8 +92,8 @@ public:
   Consumer GetConsumer() { return Consumer(*this); }
 
 private:
-  SingleAwaitable::ContextStorage _AwaitReadContext;
-  SingleAwaitable::ContextStorage _AwaitWriteContext;
+  SingleAwaiter::ContextStorage _AwaitReadContext;
+  SingleAwaiter::ContextStorage _AwaitWriteContext;
   bool _IsClosed = false;
   std::optional<DataType> _Data;
 };

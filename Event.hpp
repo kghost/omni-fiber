@@ -4,8 +4,8 @@
 #include <sys/epoll.h>
 #include <type_traits>
 
-#include "AwaitableCustom.hpp"
-#include "SharedAwaitable.hpp"
+#include "AwaiterCustom.hpp"
+#include "SharedAwaiter.hpp"
 
 #include "shared.h"
 
@@ -32,7 +32,7 @@ public:
     requires(std::is_void_v<U>)
   OMNIFIBER_API void Fire() {
     _Data = true;
-    SharedAwaitable::Fire(_AwaitContext);
+    SharedAwaiter::Fire(_AwaitContext);
   }
 
   template <typename U = DataType>
@@ -62,7 +62,7 @@ public:
     requires(!std::is_void_v<U>)
   OMNIFIBER_API void Fire(T&& data) {
     _Data.emplace(std::forward<T>(data));
-    SharedAwaitable::Fire(_AwaitContext);
+    SharedAwaiter::Fire(_AwaitContext);
   }
 
   template <typename U = DataType>
@@ -77,8 +77,8 @@ public:
     return _Data.value();
   }
 
-  OMNIFIBER_API AwaitableCustom<Event, SharedAwaitable> operator co_await() {
-    return AwaitableCustom<Event, SharedAwaitable>(_AwaitContext, *this);
+  OMNIFIBER_API AwaiterCustom<Event, SharedAwaiter> operator co_await() {
+    return AwaiterCustom<Event, SharedAwaiter>(_AwaitContext, *this);
   }
 
 private:
@@ -90,7 +90,7 @@ private:
     }
   }
 
-  SharedAwaitable::ContextStorage _AwaitContext;
+  SharedAwaiter::ContextStorage _AwaitContext;
   std::conditional_t<std::is_void_v<DataType>, bool, std::optional<DataType>> _Data = InitializeData();
 };
 

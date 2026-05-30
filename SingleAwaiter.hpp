@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AwaitableBase.hpp"
+#include "AwaiterBase.hpp"
 #include "shared.h"
 
 namespace Omni {
@@ -9,7 +9,7 @@ namespace Fiber {
 class SingleAwaitContext;
 
 // Optimized awaitable base class that only allows one fiber pending on it.
-class SingleAwaitable : public AwaitableBase<SingleAwaitable> {
+class SingleAwaiter : public AwaiterBase<SingleAwaiter> {
 public:
   using ContextStorage = SingleAwaitContext;
 
@@ -17,13 +17,13 @@ public:
   static void Fire(ContextStorage& context);
 
 protected:
-  OMNIFIBER_API explicit SingleAwaitable(ContextStorage& context);
-  OMNIFIBER_API ~SingleAwaitable();
+  OMNIFIBER_API explicit SingleAwaiter(ContextStorage& context);
+  OMNIFIBER_API ~SingleAwaiter();
 
-  SingleAwaitable(const SingleAwaitable&) = delete;
-  SingleAwaitable& operator=(const SingleAwaitable&) = delete;
-  SingleAwaitable(SingleAwaitable&&) = delete;
-  SingleAwaitable& operator=(SingleAwaitable&&) = delete;
+  SingleAwaiter(const SingleAwaiter&) = delete;
+  SingleAwaiter& operator=(const SingleAwaiter&) = delete;
+  SingleAwaiter(SingleAwaiter&&) = delete;
+  SingleAwaiter& operator=(SingleAwaiter&&) = delete;
 
 public:
   void DoAwaitSuspend();

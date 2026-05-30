@@ -42,7 +42,7 @@
     <ClInclude Include="EventQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SharedAwaitable.h">
+    <ClInclude Include="SharedAwaiter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FiberFinishNotifier.h">
@@ -65,7 +65,7 @@
     <ClCompile Include="Manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SharedAwaitable.cpp">
+    <ClCompile Include="SharedAwaiter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
