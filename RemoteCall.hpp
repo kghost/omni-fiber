@@ -21,9 +21,9 @@ public:
   RemoteCall& operator=(RemoteCall&&) = delete;
 
   template <typename Func, typename Reply = decltype(std::declval<Func>()())::CoroutineReturnType>
-  Coroutine<Reply> Call(Func func) {
+  Coroutine<Reply> Call(Func&& func) {
     OneshotEvent<Reply> event;
-    co_await _Pipe.GetProducer().Put([func = std::move(func), &event]() mutable -> Coroutine<void> {
+    co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event](this auto&& self) -> Coroutine<void> {
       if constexpr (std::is_void_v<Reply>) {
         co_await func();
         event.Fire();
@@ -35,14 +35,7 @@ public:
     co_return co_await event;
   }
 
-  Coroutine<bool> ProcessOne() {
-    auto req_opt = co_await _Pipe.GetConsumer();
-    if (!req_opt.has_value()) {
-      co_return false;
-    }
-    co_await req_opt.value()();
-    co_return true;
-  }
+  Coroutine<bool> ProcessOne() { co_return co_await HandleRequest(co_await _Pipe.GetConsumer()); }
 
   Coroutine<void> Serve() {
     while (co_await ProcessOne()) {
@@ -53,7 +46,7 @@ public:
   auto GetServiceAwaitor() { return _Pipe.GetConsumer(); }
   static Coroutine<bool> HandleRequest(decltype(std::declval<SharedPipe<std::move_only_function<Coroutine<void>()>>>()
                                                     .GetConsumer()
-                                                    .AwaitValue())& reqOpt) {
+                                                    .AwaitValue())&& reqOpt) {
     if (reqOpt.has_value()) {
       co_await reqOpt.value()();
       co_return true;

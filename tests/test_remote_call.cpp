@@ -266,8 +266,8 @@ TEST(RemoteCallTest, SelectIntegration) {
       bool loop_active = true;
       while (loop_active) {
         co_await Select(SelectPair(rc.GetServiceAwaitor(),
-                                   [&](auto reqOpt) -> Coroutine<void> {
-                                     if (!co_await RemoteCall::HandleRequest(reqOpt)) {
+                                   [&](auto req) -> Coroutine<void> {
+                                     if (!co_await RemoteCall::HandleRequest(std::move(req))) {
                                        loop_active = false;
                                        co_return;
                                      }
