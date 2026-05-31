@@ -125,5 +125,12 @@ private:
   std::coroutine_handle<promise_type> _Callee;
 };
 
+template <typename T> struct CoroutineTraits : std::false_type {
+  using CoroutineReturnTypeOrOriginalType = T;
+};
+template <typename Arg> struct CoroutineTraits<Coroutine<Arg>> : std::true_type {
+  using CoroutineReturnTypeOrOriginalType = typename Coroutine<Arg>::CoroutineReturnType;
+};
+
 } // namespace Fiber
 } // namespace Omni

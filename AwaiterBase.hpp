@@ -17,6 +17,12 @@ struct FiberYielder {
   static void DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Yield(caller); }
 };
 
+template <typename Awaiter> struct AwaiterTraits {
+  using AwaiterResultType = decltype(std::declval<Awaiter>().await_resume());
+  using AwaiterResultOptionalType =
+      std::conditional_t<std::is_void_v<AwaiterResultType>, bool, std::optional<AwaiterResultType>>;
+};
+
 template <typename Impl, typename Suspender = FiberSuspender> class AwaiterBase {
 protected:
   explicit AwaiterBase() = default;
@@ -28,7 +34,8 @@ protected:
   AwaiterBase& operator=(AwaiterBase&&) = delete;
 
 public:
-  using AwaitableBaseImpl = Impl;
+  using AwaiterBaseImpl = Impl;
+
   bool IsSuspended() const noexcept { return _Owner.has_value(); }
   void SetOwner(Fiber& owner) { _Owner = owner; }
   Fiber& GetOwner() const { return _Owner.value().get(); }

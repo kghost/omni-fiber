@@ -370,3 +370,246 @@ TEST(SelectTest, CoroutineCallbacksSimultaneous) {
   EXPECT_EQ(sequence[4], "coro_callback2_val_100");
   EXPECT_EQ(sequence[5], "select_done");
 }
+
+// 10. Test case: Select fiber event and asio timer event (timer completing first)
+TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event<> event1;
+  boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    sequence.push_back("select_start");
+    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
+                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
+                      auto [ec] = res;
+                      sequence.push_back("callback_timer_" + ec.message());
+                    }));
+    sequence.push_back("select_done");
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 3);
+  EXPECT_EQ(sequence[0], "select_start");
+  EXPECT_EQ(sequence[1], "callback_timer_Success");
+  EXPECT_EQ(sequence[2], "select_done");
+}
+
+// 11. Test case: Select fiber event and asio timer event (fiber event completing first)
+TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event<> event1;
+  boost::asio::steady_timer timer(io, std::chrono::seconds(5));
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
+      boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(50));
+      co_await waitTimer.async_wait(AsioUseFiber);
+      sequence.push_back("fire_event");
+      event1.Fire();
+      co_return;
+    });
+
+    sequence.push_back("select_start");
+    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
+                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
+                      auto [ec] = res;
+                      sequence.push_back("callback_timer_" + ec.message());
+                    }));
+    sequence.push_back("select_done");
+
+    timer.cancel();
+
+    co_await current.Join(notifier);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 4);
+  EXPECT_EQ(sequence[0], "select_start");
+  EXPECT_EQ(sequence[1], "fire_event");
+  EXPECT_EQ(sequence[2], "callback_event");
+  EXPECT_EQ(sequence[3], "select_done");
+}
+
+// 12. Test case: Select fiber event and asio timer event (fiber event already early fired)
+TEST(SelectTest, FiberEventAndAsioTimerFiberEventEarlyFired) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event<> event1;
+  boost::asio::steady_timer timer(io, std::chrono::seconds(5));
+  std::vector<std::string> sequence;
+
+  event1.Fire(); // fire early
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    sequence.push_back("select_start");
+    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
+                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
+                      auto [ec] = res;
+                      sequence.push_back("callback_timer_" + ec.message());
+                    }));
+    sequence.push_back("select_done");
+    timer.cancel();
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 3);
+  EXPECT_EQ(sequence[0], "select_start");
+  EXPECT_EQ(sequence[1], "callback_event");
+  EXPECT_EQ(sequence[2], "select_done");
+}
+
+// 13. Test case: Select pipe consumer and asio timer (pipe completing first)
+TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  auto producer = pipe.GetProducer();
+  auto consumer = pipe.GetConsumer();
+  boost::asio::steady_timer timer(io, std::chrono::seconds(5));
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
+      boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(50));
+      co_await waitTimer.async_wait(AsioUseFiber);
+      co_await producer.Put(300);
+      co_return;
+    });
+
+    sequence.push_back("select_start");
+    co_await Select(SelectPair(consumer,
+                               [&](auto result) {
+                                 if (result.has_value()) {
+                                   sequence.push_back("callback_pipe_" + std::to_string(result.value()));
+                                 }
+                               }),
+                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
+                      auto [ec] = res;
+                      sequence.push_back("callback_timer_" + ec.message());
+                    }));
+    sequence.push_back("select_done");
+
+    timer.cancel();
+
+    co_await current.Join(notifier);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 3);
+  EXPECT_EQ(sequence[0], "select_start");
+  EXPECT_EQ(sequence[1], "callback_pipe_300");
+  EXPECT_EQ(sequence[2], "select_done");
+}
+
+// 14. Test case: Select pipe consumer and asio timer (timer completing first)
+TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  auto consumer = pipe.GetConsumer();
+  boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+  std::vector<std::string> sequence;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    sequence.push_back("select_start");
+    co_await Select(SelectPair(consumer,
+                               [&](auto result) {
+                                 if (result.has_value()) {
+                                   sequence.push_back("callback_pipe_" + std::to_string(result.value()));
+                                 }
+                               }),
+                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
+                      auto [ec] = res;
+                      sequence.push_back("callback_timer_" + ec.message());
+                    }));
+    sequence.push_back("select_done");
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(sequence.size(), 3);
+  EXPECT_EQ(sequence[0], "select_start");
+  EXPECT_EQ(sequence[1], "callback_timer_Success");
+  EXPECT_EQ(sequence[2], "select_done");
+}
+
+// 15. Test case: Select returns a tuple of callback results
+TEST(SelectTest, SelectReturnTupleResults) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event<> event1;
+  Event<> event2;
+  Event<int> event3;
+  Event<int> event4;
+  Event<> event5;
+  Event<> event6;
+
+  bool executed = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
+      event1.Fire();
+      event3.Fire(100);
+      event5.Fire();
+      event6.Fire();
+      co_return;
+    });
+
+    auto results = co_await Select(SelectPair(event1, []() -> void {}), SelectPair(event2, []() -> void {}),
+                                   SelectPair(event3, [](int x) -> int { return x / 10; }),
+                                   SelectPair(event4, [](int x) -> std::string { return "should not run"; }),
+                                   SelectPair(event5, []() -> Coroutine<double> { co_return 5.5; }),
+                                   SelectPair(event6, []() -> Coroutine<void> { co_return; }));
+
+    // Verify types of results
+    static_assert(
+        std::is_same_v<decltype(results), std::tuple<bool, bool, std::optional<int>, std::optional<std::string>,
+                                                     std::optional<double>, bool>>);
+
+    // Verify values of results
+    EXPECT_EQ(std::get<0>(results), true);
+    EXPECT_EQ(std::get<1>(results), false);
+    EXPECT_EQ(std::get<2>(results), std::optional<int>(10));
+    EXPECT_EQ(std::get<3>(results), std::nullopt);
+    EXPECT_EQ(std::get<4>(results), std::optional<double>(5.5));
+    EXPECT_EQ(std::get<5>(results), true);
+
+    executed = true;
+    co_await current.Join(notifier);
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(executed);
+}

@@ -23,7 +23,7 @@ public:
   template <typename Func, typename Reply = decltype(std::declval<Func>()())::CoroutineReturnType>
   Coroutine<Reply> Call(Func&& func) {
     OneshotEvent<Reply> event;
-    co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event](this auto&& self) -> Coroutine<void> {
+    co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event](this auto&&) -> Coroutine<void> {
       if constexpr (std::is_void_v<Reply>) {
         co_await func();
         event.Fire();

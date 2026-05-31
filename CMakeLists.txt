@@ -12,6 +12,8 @@ if(POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
 endif()
 
+enable_testing()
+
 # Find dependencies
 # Boost is heavily used (Asio, Log, Format, etc.)
 find_package(Boost REQUIRED COMPONENTS log)
