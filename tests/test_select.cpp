@@ -384,10 +384,8 @@ TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("select_start");
     co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
-                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
-                      auto [ec] = res;
-                      sequence.push_back("callback_timer_" + ec.message());
-                    }));
+                    SelectPair(timer.async_wait(AsioUseFiber),
+                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
     co_return;
   });
@@ -423,10 +421,8 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
 
     sequence.push_back("select_start");
     co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
-                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
-                      auto [ec] = res;
-                      sequence.push_back("callback_timer_" + ec.message());
-                    }));
+                    SelectPair(timer.async_wait(AsioUseFiber),
+                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
 
     timer.cancel();
@@ -459,10 +455,8 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventEarlyFired) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("select_start");
     co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
-                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
-                      auto [ec] = res;
-                      sequence.push_back("callback_timer_" + ec.message());
-                    }));
+                    SelectPair(timer.async_wait(AsioUseFiber),
+                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
     timer.cancel();
     co_return;
@@ -505,10 +499,8 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
                                    sequence.push_back("callback_pipe_" + std::to_string(result.value()));
                                  }
                                }),
-                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
-                      auto [ec] = res;
-                      sequence.push_back("callback_timer_" + ec.message());
-                    }));
+                    SelectPair(timer.async_wait(AsioUseFiber),
+                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
 
     timer.cancel();
@@ -544,10 +536,8 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
                                    sequence.push_back("callback_pipe_" + std::to_string(result.value()));
                                  }
                                }),
-                    SelectPair(timer.async_wait(AsioUseFiber), [&](auto res) {
-                      auto [ec] = res;
-                      sequence.push_back("callback_timer_" + ec.message());
-                    }));
+                    SelectPair(timer.async_wait(AsioUseFiber),
+                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
     co_return;
   });

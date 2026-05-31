@@ -54,6 +54,12 @@ private:
   std::shared_ptr<OneshotEvent<std::tuple<Results...>>> _Event;
 };
 
+template <typename Function> decltype(auto) AsioApply(Function&& func) {
+  return [func = std::forward<Function>(func)](auto&& args) -> decltype(auto) {
+    return std::apply(func, std::move(args));
+  };
+}
+
 } // namespace Fiber
 } // namespace Omni
 
