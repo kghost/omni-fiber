@@ -1,5 +1,7 @@
 #pragma once
 
+#include <coroutine>
+
 namespace Omni {
 namespace Fiber {
 
@@ -17,6 +19,7 @@ public:
   FiberPromise& operator=(FiberPromise&&) = delete;
 
   virtual Fiber& GetFiber() = 0;
+  virtual std::coroutine_handle<> GetCoroutineHandle() noexcept = 0;
 
 #ifndef NDEBUG
 public:

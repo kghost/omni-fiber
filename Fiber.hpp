@@ -40,6 +40,9 @@ private:
       Promise& operator=(Promise&&) = delete;
 
       Fiber& GetFiber() override { return _Fiber; }
+      std::coroutine_handle<> GetCoroutineHandle() noexcept override {
+        return std::coroutine_handle<Promise>::from_promise(*this);
+      }
 
       auto initial_suspend() const noexcept {
         class Awaitor {

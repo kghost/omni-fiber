@@ -35,12 +35,9 @@ private:
     auto final_suspend() noexcept {
       struct FinalAwaiter {
         bool await_ready() noexcept { return false; }
-        std::coroutine_handle<> await_suspend(std::coroutine_handle<Impl> h) noexcept {
-          if (h.promise()._Caller.has_value()) {
-            return h.promise()._Caller.value();
-          } else {
-            return std::noop_coroutine();
-          }
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<Impl> self) noexcept {
+          assert(self.promise()._CallerPromise.has_value());
+          return self.promise()._CallerPromise.value().get().GetCoroutineHandle();
         }
         void await_resume() noexcept {}
       };
@@ -62,18 +59,23 @@ private:
 
   protected:
     std::optional<std::expected<RetType, std::exception_ptr>> _RetState;
-    std::optional<std::coroutine_handle<>> _Caller;
     std::optional<std::reference_wrapper<FiberPromise>> _CallerPromise;
   };
 
   class PromiseVoid final : public PromiseBase<PromiseVoid> {
   public:
+    std::coroutine_handle<> GetCoroutineHandle() noexcept override {
+      return std::coroutine_handle<PromiseVoid>::from_promise(*this);
+    }
     void return_void() { this->_RetState.emplace(); }
     friend class Coroutine;
   };
 
   class PromiseNonVoid final : public PromiseBase<PromiseNonVoid> {
   public:
+    std::coroutine_handle<> GetCoroutineHandle() noexcept override {
+      return std::coroutine_handle<PromiseNonVoid>::from_promise(*this);
+    }
     template <typename T> void return_value(T&& ret) {
       this->_RetState = typename decltype(this->_RetState)::value_type(std::in_place, std::forward<T>(ret));
     }
@@ -99,7 +101,6 @@ public:
   bool await_ready() const noexcept { return _Callee.promise().IsFinished(); }
   template <typename T> std::coroutine_handle<> await_suspend(std::coroutine_handle<T> caller) noexcept {
     promise_type& promise = _Callee.promise();
-    promise._Caller.emplace(caller);
     promise._CallerPromise.emplace(caller.promise());
 #ifndef NDEBUG
     caller.promise().SetInstructionPointer(__builtin_return_address(0));
