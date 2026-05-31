@@ -8,6 +8,7 @@
 
 #include "Asio.hpp"
 #include "Coroutine.hpp"
+#include "Event.hpp"
 #include "Fiber.hpp"
 #include "GetCurrentFiber.hpp"
 #include "Manager.hpp"
