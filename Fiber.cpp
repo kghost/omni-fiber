@@ -81,7 +81,15 @@ void Fiber::Suspend(std::coroutine_handle<> caller) {
   _State = State::Suspending;
 }
 
-void Fiber::StartingYield(std::coroutine_handle<Fiber::FiberFrame::Promise> caller) {
+void Fiber::Yield(std::coroutine_handle<> caller) {
+  assert(_State == State::Running);
+  assert(!_Continuation.has_value());
+  _Continuation.emplace(caller);
+  _State = State::Yielding;
+  _Manager.YieldSchedule(*this);
+}
+
+void Fiber::Starting(std::coroutine_handle<Fiber::FiberFrame::Promise> caller) {
   assert(_State == State::NotStart);
   assert(!_Continuation.has_value());
   _Continuation.emplace(caller);
@@ -89,13 +97,17 @@ void Fiber::StartingYield(std::coroutine_handle<Fiber::FiberFrame::Promise> call
 }
 
 void Fiber::Resume() {
-  assert(_State == State::Ready);
+  assert(_State == State::Ready || _State == State::Yielded);
   _State = State::Running;
 #ifndef NDEBUG
   _SuspendedPromise = nullptr;
 #endif
   std::exchange(_Continuation, std::nullopt).value().resume();
   switch (_State) {
+  case State::Yielding:
+    assert(_Continuation.has_value());
+    _State = State::Yielded;
+    return;
   case State::Suspending:
     assert(_Continuation.has_value());
     _State = State::Suspended;

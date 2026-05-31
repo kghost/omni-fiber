@@ -19,6 +19,7 @@
 #include "Fiber.hpp"
 #include "GetCurrentFiber.hpp"
 #include "Manager.hpp"
+#include "Yield.hpp"
 
 using namespace Omni::Fiber;
 
@@ -449,3 +450,44 @@ TEST(FiberTest, CallstackTrace) {
   std::cout << "Captured log:\n" << logs << std::endl;
 }
 #endif
+
+// Test Fiber Yielding and Low-Priority Scheduling Queue
+TEST(FiberTest, FiberYieldLowPriority) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  std::vector<std::string> order;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto child1 = current.Spawn("child1", [&]() -> Coroutine<void> {
+      order.push_back("child1_1");
+      co_await Yield();
+      order.push_back("child1_2");
+      co_await Yield();
+      order.push_back("child1_3");
+      co_return;
+    });
+
+    auto child2 = current.Spawn("child2", [&]() -> Coroutine<void> {
+      order.push_back("child2_1");
+      order.push_back("child2_2");
+      co_return;
+    });
+
+    co_await current.Join(child1);
+    co_await current.Join(child2);
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(order.size(), 5);
+  EXPECT_EQ(order[0], "child1_1");
+  EXPECT_EQ(order[1], "child2_1");
+  EXPECT_EQ(order[2], "child2_2");
+  EXPECT_EQ(order[3], "child1_2");
+  EXPECT_EQ(order[4], "child1_3");
+}

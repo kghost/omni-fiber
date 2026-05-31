@@ -33,6 +33,7 @@ public:
 
   OMNIFIBER_API void DumpAllFibers();
   OMNIFIBER_API void Schedule(Fiber& fiber); // Mark the fiber ready to be scheduled.
+  OMNIFIBER_API void YieldSchedule(Fiber& fiber);
 
   // Spawn the root fiber
   template <typename CoroutineFunction>
@@ -48,7 +49,7 @@ public:
     Runner(Manager& manager) : _Manager(manager) { _Manager.Posted = true; }
     ~Runner() {
       if (!Moved) {
-        assert(_Manager._ReadyQueue.empty());
+        assert(_Manager._ReadyQueue.empty() && _Manager._YieldQueue.empty());
         _Manager.Posted = false;
       }
     }
@@ -81,6 +82,7 @@ private:
   bool Executing = false;
 
   std::queue<std::reference_wrapper<Fiber>> _ReadyQueue;
+  std::queue<std::reference_wrapper<Fiber>> _YieldQueue;
   std::shared_ptr<Fiber> _RootFiber;
 
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> Log;

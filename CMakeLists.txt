@@ -110,6 +110,7 @@ if(NOT OMNIFIBER_INTERNAL)
     Pipe.hpp
     RemoteCall.hpp
     Select.hpp
+    Yield.hpp
     shared.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omni-fiber
   )

@@ -32,11 +32,26 @@ void Manager::Schedule(Fiber& fiber) {
   }
 }
 
+void Manager::YieldSchedule(Fiber& fiber) {
+  _YieldQueue.push(fiber);
+  if (!Executing && !Posted) {
+    _Executor.Post(*this);
+  }
+}
+
 void Manager::Run() {
-  while (!_ReadyQueue.empty()) {
-    auto fiber = _ReadyQueue.front();
-    _ReadyQueue.pop();
-    fiber.get().Resume();
+  while (true) {
+    if (!_ReadyQueue.empty()) {
+      auto fiber = _ReadyQueue.front();
+      _ReadyQueue.pop();
+      fiber.get().Resume();
+    } else if (!_YieldQueue.empty()) {
+      auto fiber = _YieldQueue.front();
+      _YieldQueue.pop();
+      fiber.get().Resume();
+    } else {
+      break;
+    }
   }
 
   if (_RootFiber->IsFinished() && _RootFiber->_Exception.has_value()) {

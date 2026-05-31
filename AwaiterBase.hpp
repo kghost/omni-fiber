@@ -9,7 +9,15 @@
 namespace Omni {
 namespace Fiber {
 
-template <typename Impl> class AwaiterBase {
+struct FiberSuspender {
+  static void DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Suspend(caller); }
+};
+
+struct FiberYielder {
+  static void DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Yield(caller); }
+};
+
+template <typename Impl, typename Suspender = FiberSuspender> class AwaiterBase {
 protected:
   explicit AwaiterBase() = default;
   ~AwaiterBase() = default;
@@ -33,7 +41,7 @@ public:
     promise.SetInstructionPointer(__builtin_return_address(0));
     self._Owner.value().get().SetSuspendedPromise(&promise);
 #endif
-    self._Owner.value().get().Suspend(caller);
+    Suspender::DoSuspend(self._Owner.value().get(), caller);
     self.DoAwaitSuspend();
   }
 
