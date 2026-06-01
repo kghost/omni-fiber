@@ -14,7 +14,7 @@ namespace Fiber {
 
 template <typename Awaitable, typename Callback> struct SelectPairImpl {
   using AwaitableType = Awaitable&&;
-  using Awaiter = decltype(std::declval<AwaitableType>().operator co_await());
+  using Awaiter = decltype(std::move(std::declval<AwaitableType>()).operator co_await());
   using AwaiterTraits = Omni::Fiber::AwaiterTraits<Awaiter>;
   using AwaiterResultType = typename AwaiterTraits::AwaiterResultType;
   using AwaiterResultOptionalType = typename AwaiterTraits::AwaiterResultOptionalType;
@@ -34,7 +34,7 @@ template <typename Awaitable, typename Callback> struct SelectPairImpl {
   AwaitableType first;
   CallbackType second;
 
-  operator Awaiter() { return first.operator co_await(); }
+  operator Awaiter() { return std::move(first).operator co_await(); }
 
   template <typename Result> Coroutine<ResultType> RunCallback(Result& result) {
     auto& callback = this->second;
@@ -89,7 +89,7 @@ template <typename Awaitable, typename Callback> struct SelectPairImpl {
   }
 };
 
-template <typename... Pairs> class SelectAwaiter : public AwaiterBase<SelectAwaiter<Pairs...>> {
+template <typename... Pairs> class SelectAwaiter : public AwaiterBase<FiberSuspender> {
 private:
   static_assert(((requires { typename Pairs::Awaiter::AwaiterBaseImpl; }) && ...),
                 "All awaiters in Select must derive from AwaiterBase");
@@ -101,9 +101,15 @@ public:
     return std::apply([](const auto&... awaiter) { return (awaiter.await_ready() || ...); }, _Awaiters);
   }
 
-  void DoAwaitSuspend() {
-    auto& parent = this->GetOwner();
-    std::apply([&](auto&... awaiter) { ((awaiter.SetOwner(parent), awaiter.DoAwaitSuspend()), ...); }, _Awaiters);
+  void OnAwaitSuspend() {
+    auto& parent = this->GetOwnerPromise();
+    std::apply([&](auto&... awaiter) { ((awaiter.SetOwnerPromise(parent), awaiter.OnAwaitSuspend()), ...); },
+               _Awaiters);
+  }
+
+  template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
+    DoAwaitSuspend(caller);
+    OnAwaitSuspend();
   }
 
   std::tuple<typename Pairs::AwaiterResultOptionalType...> await_resume() {

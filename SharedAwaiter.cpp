@@ -30,7 +30,7 @@ SharedAwaiter::~SharedAwaiter() {
   }
 }
 
-void SharedAwaiter::DoAwaitSuspend() { _Context->AddFiberAwaitable(*this); }
+void SharedAwaiter::OnAwaitSuspend() { _Context->AddFiberAwaitable(*this); }
 
 } // namespace Fiber
 } // namespace Omni

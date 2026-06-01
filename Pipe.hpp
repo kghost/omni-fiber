@@ -27,9 +27,12 @@ public:
   class PipeClosed {};
 
   class Producer {
-  public:
+  private:
+    friend class Pipe;
     explicit Producer(Pipe& pipe) : _Pipe(pipe) {}
 
+  public:
+    ~Producer() {}
     Producer(Producer&) = delete;
     Producer& operator=(Producer&) = delete;
     Producer(Producer&&) = delete;
@@ -38,14 +41,14 @@ public:
     bool AwaitReady() const { return !_Pipe._Data.has_value(); }
     void AwaitValue() {}
 
-    AwaiterCustom<Producer, SingleAwaiter> Put(DataType&& data) {
+    AwaiterCustom<Producer, SingleAwaiter> Put(DataType&& data) && {
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._Data.emplace(std::move(data));
       SingleAwaiter::Fire(_Pipe._AwaitReadContext);
       return AwaiterCustom<Producer, SingleAwaiter>(_Pipe._AwaitWriteContext, *this);
     }
 
-    Coroutine<void> Close() {
+    Coroutine<void> Close() && {
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._IsClosed = true;
       SingleAwaiter::Fire(_Pipe._AwaitReadContext);
@@ -57,10 +60,12 @@ public:
   };
 
   class Consumer {
-  public:
+  private:
+    friend class Pipe;
     explicit Consumer(Pipe& pipe) : _Pipe(pipe) {}
-    ~Consumer() {}
 
+  public:
+    ~Consumer() {}
     Consumer(Consumer&) = delete;
     Consumer& operator=(Consumer&) = delete;
     Consumer(Consumer&&) = delete;
@@ -80,7 +85,7 @@ public:
       }
     }
 
-    AwaiterCustom<Consumer, SingleAwaiter> operator co_await() {
+    AwaiterCustom<Consumer, SingleAwaiter> operator co_await() && {
       return AwaiterCustom<Consumer, SingleAwaiter>(_Pipe._AwaitReadContext, *this);
     }
 

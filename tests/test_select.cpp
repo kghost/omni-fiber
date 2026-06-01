@@ -203,8 +203,6 @@ TEST(SelectTest, PipeConsumerSelect) {
   Manager manager(executor);
 
   Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
 
   std::vector<std::string> sequence;
 
@@ -212,11 +210,11 @@ TEST(SelectTest, PipeConsumerSelect) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
-      co_await producer.Put(100);
+      co_await pipe.GetProducer().Put(100);
       co_return;
     });
 
-    co_await Select(SelectPair(consumer, [&](auto result) {
+    co_await Select(SelectPair(pipe.GetConsumer(), [&](auto result) {
       if (result.has_value()) {
         sequence.push_back("pipe_val_" + std::to_string(result.value()));
       }
@@ -239,7 +237,6 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
   Manager manager(executor);
 
   Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
 
   std::vector<std::string> sequence;
 
@@ -247,7 +244,7 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
-      co_await producer.Put(200);
+      co_await pipe.GetProducer().Put(200);
       co_return;
     });
 
@@ -477,8 +474,6 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
   Manager manager(executor);
 
   Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
   boost::asio::steady_timer timer(io, std::chrono::seconds(5));
   std::vector<std::string> sequence;
 
@@ -488,12 +483,12 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(50));
       co_await waitTimer.async_wait(AsioUseFiber);
-      co_await producer.Put(300);
+      co_await pipe.GetProducer().Put(300);
       co_return;
     });
 
     sequence.push_back("select_start");
-    co_await Select(SelectPair(consumer,
+    co_await Select(SelectPair(pipe.GetConsumer(),
                                [&](auto result) {
                                  if (result.has_value()) {
                                    sequence.push_back("callback_pipe_" + std::to_string(result.value()));

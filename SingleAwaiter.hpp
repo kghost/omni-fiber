@@ -1,15 +1,14 @@
 #pragma once
 
 #include "AwaiterBase.hpp"
+#include "SingleAwaitContext.hpp"
 #include "shared.h"
 
 namespace Omni {
 namespace Fiber {
 
-class SingleAwaitContext;
-
 // Optimized awaitable base class that only allows one fiber pending on it.
-class SingleAwaiter : public AwaiterBase<SingleAwaiter> {
+class SingleAwaiter : public AwaiterBase<FiberSuspender> {
 public:
   using ContextStorage = SingleAwaitContext;
 
@@ -26,7 +25,12 @@ protected:
   SingleAwaiter& operator=(SingleAwaiter&&) = delete;
 
 public:
-  void DoAwaitSuspend();
+  template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
+    DoAwaitSuspend(caller);
+    OnAwaitSuspend();
+  }
+
+  void OnAwaitSuspend();
 
 private:
   SingleAwaitContext& _Context;

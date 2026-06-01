@@ -47,18 +47,16 @@ TEST(PipeTest, BasicPutAndGet) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
-      auto producer = pipe.GetProducer();
-      EXPECT_TRUE(producer.AwaitReady());
-      co_await producer.Put(42);
-      EXPECT_TRUE(producer.AwaitReady());
+      EXPECT_TRUE(pipe.GetProducer().AwaitReady());
+      co_await pipe.GetProducer().Put(42);
+      EXPECT_TRUE(pipe.GetProducer().AwaitReady());
       executed = true;
       co_return;
     });
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
-      auto consumer = pipe.GetConsumer();
-      EXPECT_TRUE(consumer.AwaitReady());
-      auto data = co_await consumer;
+      EXPECT_TRUE(pipe.GetConsumer().AwaitReady());
+      auto data = co_await pipe.GetConsumer();
       EXPECT_TRUE(data.has_value());
       if (!data.has_value()) {
         co_return;
@@ -83,8 +81,6 @@ TEST(PipeTest, BasicClose) {
   Manager manager(executor);
 
   Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
 
   bool executed = false;
 
@@ -92,14 +88,14 @@ TEST(PipeTest, BasicClose) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
-      co_await producer.Close();
+      co_await pipe.GetProducer().Close();
       executed = true;
       co_return;
     });
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
-      EXPECT_TRUE(consumer.AwaitReady());
-      auto data = co_await consumer;
+      EXPECT_TRUE(pipe.GetConsumer().AwaitReady());
+      auto data = co_await pipe.GetConsumer();
       EXPECT_FALSE(data.has_value());
       co_return;
     });
@@ -120,8 +116,6 @@ TEST(PipeTest, ProducerSuspension) {
   Manager manager(executor);
 
   Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
 
   std::vector<std::string> sequence;
 
@@ -130,10 +124,10 @@ TEST(PipeTest, ProducerSuspension) {
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       sequence.push_back("prod_put_1");
-      co_await producer.Put(1);
+      co_await pipe.GetProducer().Put(1);
 
       sequence.push_back("prod_put_2");
-      co_await producer.Put(2);
+      co_await pipe.GetProducer().Put(2);
 
       sequence.push_back("prod_done");
       co_return;
@@ -141,7 +135,7 @@ TEST(PipeTest, ProducerSuspension) {
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
       sequence.push_back("cons_read_1");
-      auto val1 = co_await consumer;
+      auto val1 = co_await pipe.GetConsumer();
       EXPECT_TRUE(val1.has_value());
       if (!val1.has_value()) {
         co_return;
@@ -149,7 +143,7 @@ TEST(PipeTest, ProducerSuspension) {
       EXPECT_EQ(*val1, 1);
 
       sequence.push_back("cons_read_2");
-      auto val2 = co_await consumer;
+      auto val2 = co_await pipe.GetConsumer();
       EXPECT_TRUE(val2.has_value());
       if (!val2.has_value()) {
         co_return;
@@ -183,8 +177,6 @@ TEST(PipeTest, ConsumerSuspension) {
   Manager manager(executor);
 
   Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
 
   std::vector<std::string> sequence;
 
@@ -193,7 +185,7 @@ TEST(PipeTest, ConsumerSuspension) {
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
       sequence.push_back("cons_read_1");
-      auto val1 = co_await consumer;
+      auto val1 = co_await pipe.GetConsumer();
       sequence.push_back("cons_got_1");
       EXPECT_TRUE(val1.has_value());
       if (!val1.has_value()) {
@@ -202,7 +194,7 @@ TEST(PipeTest, ConsumerSuspension) {
       EXPECT_EQ(*val1, 100);
 
       sequence.push_back("cons_read_2");
-      auto val2 = co_await consumer;
+      auto val2 = co_await pipe.GetConsumer();
       sequence.push_back("cons_got_2");
       EXPECT_FALSE(val2.has_value());
 
@@ -212,10 +204,10 @@ TEST(PipeTest, ConsumerSuspension) {
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       sequence.push_back("prod_put_1");
-      co_await producer.Put(100);
+      co_await pipe.GetProducer().Put(100);
 
       sequence.push_back("prod_close");
-      co_await producer.Close();
+      co_await pipe.GetProducer().Close();
 
       sequence.push_back("prod_done");
       co_return;
@@ -242,10 +234,9 @@ TEST(PipeTest, ConsumerSuspension) {
 // 6. Test case: Destruction safety
 TEST(PipeTest, DestructionSafety) {
   auto pipePtr = std::make_unique<Pipe<int>>();
-  auto producer = pipePtr->GetProducer();
 
   // Obtain an awaitable object from the producer, which creates a context
-  auto awaitable = producer.Put(42);
+  auto awaitable = pipePtr->GetProducer().Put(42);
 
   // Destroy the pipe while the awaitable is still alive
   pipePtr.reset();
@@ -260,8 +251,6 @@ TEST(PipeTest, MoveOnlyObject) {
   Manager manager(executor);
 
   Pipe<std::unique_ptr<int>> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
 
   bool executed = false;
 
@@ -270,13 +259,13 @@ TEST(PipeTest, MoveOnlyObject) {
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       auto data = std::make_unique<int>(1337);
-      co_await producer.Put(std::move(data));
+      co_await pipe.GetProducer().Put(std::move(data));
       executed = true;
       co_return;
     });
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
-      auto val = co_await consumer;
+      auto val = co_await pipe.GetConsumer();
       EXPECT_TRUE(val.has_value());
       if (val.has_value()) {
         EXPECT_NE(*val, nullptr);

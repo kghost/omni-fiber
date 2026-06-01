@@ -1,5 +1,6 @@
 #include "SingleAwaiter.hpp"
 
+#include "AwaiterBase.hpp"
 #include "Fiber.hpp"
 #include "SingleAwaitContext.hpp"
 
@@ -18,7 +19,7 @@ SingleAwaiter::~SingleAwaiter() {
   }
 }
 
-void SingleAwaiter::DoAwaitSuspend() { _Context.AddFiberAwaitable(*this); }
+void SingleAwaiter::OnAwaitSuspend() { _Context.AddFiberAwaitable(*this); }
 
 } // namespace Fiber
 } // namespace Omni

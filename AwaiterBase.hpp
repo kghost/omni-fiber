@@ -23,7 +23,7 @@ template <typename Awaiter> struct AwaiterTraits {
       std::conditional_t<std::is_void_v<AwaiterResultType>, bool, std::optional<AwaiterResultType>>;
 };
 
-template <typename Impl, typename Suspender = FiberSuspender> class AwaiterBase {
+template <typename Suspender = FiberSuspender> class AwaiterBase {
 protected:
   explicit AwaiterBase() = default;
   ~AwaiterBase() = default;
@@ -34,26 +34,25 @@ protected:
   AwaiterBase& operator=(AwaiterBase&&) = delete;
 
 public:
-  using AwaiterBaseImpl = Impl;
+  using AwaiterBaseImpl = Suspender;
 
-  bool IsSuspended() const noexcept { return _Owner.has_value(); }
-  void SetOwner(Fiber& owner) { _Owner = owner; }
-  Fiber& GetOwner() const { return _Owner.value().get(); }
-  void Schedule(this Impl& self) { self._Owner.value().get().Schedule(); }
+  bool IsSuspended() const noexcept { return _OwnerFiber.has_value(); }
+  void SetOwnerPromise(Fiber& owner) { _OwnerFiber = owner; }
+  Fiber& GetOwnerPromise() const { return _OwnerFiber.value().get(); }
+  void Schedule() { _OwnerFiber.value().get().Schedule(); }
 
-  template <typename PromiseType> void await_suspend(this Impl& self, std::coroutine_handle<PromiseType> caller) {
+  template <typename PromiseType> void DoAwaitSuspend(std::coroutine_handle<PromiseType> caller) {
     auto& promise = caller.promise();
-    self._Owner = promise.GetFiber();
+    _OwnerFiber = promise.GetFiber();
 #ifndef NDEBUG
     promise.SetInstructionPointer(__builtin_return_address(0));
-    self._Owner.value().get().SetSuspendedPromise(&promise);
+    _OwnerFiber.value().get().SetSuspendedPromise(&promise);
 #endif
-    Suspender::DoSuspend(self._Owner.value().get(), caller);
-    self.DoAwaitSuspend();
+    Suspender::DoSuspend(_OwnerFiber.value().get(), caller);
   }
 
 private:
-  std::optional<std::reference_wrapper<Fiber>> _Owner;
+  std::optional<std::reference_wrapper<Fiber>> _OwnerFiber;
 };
 
 } // namespace Fiber

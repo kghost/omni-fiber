@@ -40,7 +40,7 @@ public:
     bool AwaitReady() const { return !_Pipe._Data.has_value(); }
     void AwaitValue() {}
 
-    Coroutine<void> Put(DataType&& data) {
+    Coroutine<void> Put(DataType&& data) && {
       co_await AwaiterCustom<Producer, SharedAwaiter>(_Pipe._AwaitWriteContext, *this);
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._Data.emplace(std::move(data));
@@ -48,7 +48,7 @@ public:
       co_await AwaiterCustom<Producer, SharedAwaiter>(_Pipe._AwaitWriteContext, *this);
     }
 
-    Coroutine<void> Close() {
+    Coroutine<void> Close() && {
       co_await AwaiterCustom<Producer, SharedAwaiter>(_Pipe._AwaitWriteContext, *this);
       assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
       _Pipe._IsClosed = true;
@@ -83,7 +83,7 @@ public:
       }
     }
 
-    AwaiterCustom<Consumer, SingleAwaiter> operator co_await() {
+    AwaiterCustom<Consumer, SingleAwaiter> operator co_await() && {
       return AwaiterCustom<Consumer, SingleAwaiter>(_Pipe._AwaitReadContext, *this);
     }
 
