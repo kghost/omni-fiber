@@ -126,7 +126,7 @@ public:
   void DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent);
   void SetSuspendedPromise(FiberPromise* suspendedPromise) { _SuspendedPromise = suspendedPromise; }
 #else
-  void DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent) {}
+  void DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>&, int) {}
 #endif
 
 private:

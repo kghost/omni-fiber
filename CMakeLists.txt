@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.3)
+cmake_minimum_required(VERSION 3.10)
 project(omni-fiber)
 
 option(OMNIFIBER_INTERNAL "Build omni-fiber as an internal static library" OFF)
@@ -61,9 +61,9 @@ foreach(suffix "" "-asan")
     Boost::thread
   )
 
-  if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-    find_library(DW_LIBRARY NAMES dw REQUIRED)
-    target_link_libraries(${target} PRIVATE ${DW_LIBRARY})
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    pkg_check_modules(LIBDW REQUIRED libdw)
+    target_link_libraries(${target} PRIVATE ${LIBDW_LIBRARIES})
   endif()
 
   # Target properties

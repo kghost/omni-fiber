@@ -1,6 +1,5 @@
 #include "SingleAwaiter.hpp"
 
-#include "AwaiterBase.hpp"
 #include "Fiber.hpp"
 #include "SingleAwaitContext.hpp"
 

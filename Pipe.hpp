@@ -17,7 +17,8 @@ namespace Fiber {
 // A single consumer single producer pipe.
 template <typename DataType> class Pipe final {
 public:
-  explicit Pipe() = default;
+  explicit Pipe() {}
+  ~Pipe() {}
 
   Pipe(Pipe&) = delete;
   Pipe& operator=(Pipe&) = delete;
