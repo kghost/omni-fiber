@@ -50,7 +50,8 @@ private:
       auto& fiber = self.GetFiber();
       fiber.SetSuspendedPromise(&self);
       boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
-      BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::error) << "Unhandled exception escaping coroutine:";
+      BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::error)
+          << "Unhandled exception in fiber " << fiber.GetName();
       fiber.DumpCallStack(logger, 0);
       fiber.SetSuspendedPromise(nullptr);
 #endif

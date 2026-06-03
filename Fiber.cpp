@@ -29,10 +29,7 @@ void Fiber::OnChildFinished(Fiber& child) {
 
 Coroutine<void> Fiber::Wait(std::function<bool()> until) {
   assert(&co_await GetCurrentFiber() == this);
-  while (true) {
-    if (until()) {
-      co_return;
-    }
+  while (!until()) {
     co_await AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext);
   }
 }
@@ -51,12 +48,12 @@ Coroutine<std::shared_ptr<Fiber>> Fiber::WaitFor() {
   assert(!_Children.empty() || !_FinishedChildren.empty());
   co_await Wait([&] { return !_FinishedChildren.empty(); });
   auto it = _FinishedChildren.begin();
-  auto ret = *it;
+  auto child = *it;
   _FinishedChildren.erase(it);
-  if (ret->_Exception.has_value()) {
-    throw FiberException{._Fiber = ret, ._InnerException = ret->_Exception.value()};
+  if (child->_Exception.has_value()) {
+    throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
   }
-  co_return ret;
+  co_return child;
 }
 
 Coroutine<void> Fiber::WaitAll() {
