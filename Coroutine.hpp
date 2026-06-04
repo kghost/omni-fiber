@@ -10,13 +10,12 @@
 
 #include "FiberPromise.hpp"
 
-#ifndef NDEBUG
-#include <boost/log/common.hpp>
-#include <boost/log/trivial.hpp>
-#endif
-
 namespace Omni {
 namespace Fiber {
+
+#ifndef NDEBUG
+void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise);
+#endif
 
 template <typename RetType> class [[nodiscard]] Coroutine {
 private:
@@ -47,13 +46,7 @@ private:
       self._RetState = std::unexpected(std::current_exception());
 #ifndef NDEBUG
       self.SetInstructionPointer(__builtin_return_address(0));
-      auto& fiber = self.GetFiber();
-      fiber.SetSuspendedPromise(&self);
-      boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
-      BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::error)
-          << "Unhandled exception in fiber " << fiber.GetName();
-      fiber.DumpCallStack(logger, 0);
-      fiber.SetSuspendedPromise(nullptr);
+      DebugOutputFiberCallStack(self.GetFiber(), self);
 #endif
     }
     bool IsFinished() const noexcept { return _RetState.has_value(); }

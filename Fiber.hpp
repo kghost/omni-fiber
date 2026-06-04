@@ -13,9 +13,11 @@
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
 
+#include "AwaiterAlwaysSuspend.hpp"
 #include "Coroutine.hpp"
 #include "FiberFinishNotifier.hpp"
 #include "FiberPromise.hpp"
+#include "SharedAwaiter.hpp"
 
 #include "shared.h"
 
@@ -116,7 +118,10 @@ public:
   OMNIFIBER_API Manager& GetManager() { return _Manager; }
   OMNIFIBER_API bool IsFinished() { return _State == State::Finished; }
   OMNIFIBER_API void Schedule();
+
+  OMNIFIBER_API AwaiterAlwaysSuspend<SharedAwaiter> ChildAwaitor();
   OMNIFIBER_API Coroutine<void> Wait(std::function<bool()> until);
+  OMNIFIBER_API void TryJoin(std::shared_ptr<Fiber> child);
   OMNIFIBER_API Coroutine<void> Join(std::shared_ptr<Fiber> child);
   OMNIFIBER_API Coroutine<std::shared_ptr<Fiber>> WaitFor();
   OMNIFIBER_API Coroutine<void> WaitAll();
@@ -187,8 +192,21 @@ private:
   FiberFrame _OutMostFrame;
 
   // Children management.
-  std::set<std::shared_ptr<Fiber>, std::less<>> _Children;
-  std::set<std::shared_ptr<Fiber>> _FinishedChildren;
+  struct Less {
+    using is_transparent = void;
+    bool operator()(const std::shared_ptr<Fiber>& lhs, const std::shared_ptr<Fiber>& rhs) const {
+      return std::to_address(lhs) < std::to_address(rhs);
+    }
+    bool operator()(const std::shared_ptr<Fiber>& lhs, const Fiber& rhs) const {
+      return std::to_address(lhs) < std::addressof(rhs);
+    }
+    bool operator()(const Fiber& lhs, const std::shared_ptr<Fiber>& rhs) const {
+      return std::addressof(lhs) < std::to_address(rhs);
+    }
+  };
+
+  std::set<std::shared_ptr<Fiber>, Less> _Children;
+  std::set<std::shared_ptr<Fiber>, Less> _FinishedChildren;
   std::weak_ptr<SharedAwaitContext> _JoinAwaitContext;
 
 #ifndef NDEBUG
@@ -197,8 +215,6 @@ private:
 };
 
 boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber);
-inline bool operator<(const std::shared_ptr<Fiber>& lhs, const Fiber& rhs) { return lhs.get() < std::addressof(rhs); }
-inline bool operator<(const Fiber& lhs, const std::shared_ptr<Fiber>& rhs) { return std::addressof(lhs) < rhs.get(); }
 
 } // namespace Fiber
 } // namespace Omni

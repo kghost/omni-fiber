@@ -4,17 +4,25 @@
 #include <functional>
 #include <optional>
 
-#include "Fiber.hpp"
-
 namespace Omni {
 namespace Fiber {
 
-struct FiberSuspender {
-  static void DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Suspend(caller); }
+class Fiber;
+class FiberPromise;
+
+struct FiberActionBase {
+  static void Schedule(Fiber& fiber);
+#ifndef NDEBUG
+  static void SetSuspendedPromise(Fiber& fiber, FiberPromise& promise);
+#endif
 };
 
-struct FiberYielder {
-  static void DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Yield(caller); }
+struct FiberSuspender : public FiberActionBase {
+  static void DoSuspend(Fiber& fiber, std::coroutine_handle<> caller);
+};
+
+struct FiberYielder : public FiberActionBase {
+  static void DoSuspend(Fiber& fiber, std::coroutine_handle<> caller);
 };
 
 template <typename Awaiter> struct AwaiterTraits {
@@ -23,7 +31,7 @@ template <typename Awaiter> struct AwaiterTraits {
       std::conditional_t<std::is_void_v<AwaiterResultType>, bool, std::optional<AwaiterResultType>>;
 };
 
-template <typename Suspender = FiberSuspender> class AwaiterBase {
+template <typename Suspender> class AwaiterBase {
 protected:
   explicit AwaiterBase() = default;
   ~AwaiterBase() = default;
@@ -39,14 +47,14 @@ public:
   bool IsSuspended() const noexcept { return _OwnerFiber.has_value(); }
   void SetOwnerPromise(Fiber& owner) { _OwnerFiber = owner; }
   Fiber& GetOwnerPromise() const { return _OwnerFiber.value().get(); }
-  void Schedule() { _OwnerFiber.value().get().Schedule(); }
+  void Schedule() { Suspender::Schedule(_OwnerFiber.value().get()); }
 
   template <typename PromiseType> void DoAwaitSuspend(std::coroutine_handle<PromiseType> caller) {
     auto& promise = caller.promise();
     _OwnerFiber = promise.GetFiber();
 #ifndef NDEBUG
     promise.SetInstructionPointer(__builtin_return_address(0));
-    _OwnerFiber.value().get().SetSuspendedPromise(&promise);
+    Suspender::SetSuspendedPromise(_OwnerFiber.value().get(), promise);
 #endif
     Suspender::DoSuspend(_OwnerFiber.value().get(), caller);
   }

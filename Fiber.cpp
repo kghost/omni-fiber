@@ -27,11 +27,27 @@ void Fiber::OnChildFinished(Fiber& child) {
   SharedAwaiter::Fire(_JoinAwaitContext);
 }
 
+AwaiterAlwaysSuspend<SharedAwaiter> Fiber::ChildAwaitor() {
+  return AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext);
+}
+
 Coroutine<void> Fiber::Wait(std::function<bool()> until) {
   assert(&co_await GetCurrentFiber() == this);
   while (!until()) {
-    co_await AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext);
+    co_await ChildAwaitor();
   }
+}
+
+void Fiber::TryJoin(std::shared_ptr<Fiber> child) {
+  assert(_Children.contains(child) || _FinishedChildren.contains(child));
+  auto it = _FinishedChildren.find(child);
+  if (it != _FinishedChildren.end()) {
+    _FinishedChildren.erase(it);
+    if (child->_Exception.has_value()) {
+      throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
+    }
+  }
+  return;
 }
 
 Coroutine<void> Fiber::Join(std::shared_ptr<Fiber> child) {

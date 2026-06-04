@@ -17,15 +17,19 @@ enable_testing()
 # Find dependencies
 # Boost is heavily used (Asio, Log, Format, etc.)
 find_package(Boost REQUIRED COMPONENTS log)
+find_package(PkgConfig REQUIRED)
+
 
 # Source files
 set(SOURCES
+  AwaiterBase.cpp
+  Coroutine.cpp
   Fiber.cpp
+  Manager.cpp
   SharedAwaitContext.cpp
   SharedAwaiter.cpp
   SingleAwaitContext.cpp
   SingleAwaiter.cpp
-  Manager.cpp
   SymbolResolver.cpp
 )
 

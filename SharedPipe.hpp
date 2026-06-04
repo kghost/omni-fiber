@@ -8,6 +8,7 @@
 #include <boost/log/trivial.hpp>
 
 #include "AwaiterCustom.hpp"
+#include "Coroutine.hpp"
 #include "SharedAwaitContext.hpp"
 #include "SharedAwaiter.hpp"
 #include "SingleAwaitContext.hpp"
