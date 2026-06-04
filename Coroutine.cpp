@@ -2,6 +2,7 @@
 #include "FiberPromise.hpp"
 
 #ifndef NDEBUG
+#include <boost/exception/diagnostic_information.hpp>
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
 #endif
@@ -12,11 +13,11 @@ namespace Omni {
 namespace Fiber {
 
 #ifndef NDEBUG
-void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise) {
+void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, std::exception_ptr eptr) {
   fiber.SetSuspendedPromise(&promise);
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
   BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::error)
-      << "Unhandled exception in fiber " << fiber.GetName();
+      << "Unhandled exception in fiber " << fiber.GetName() << ": " << boost::diagnostic_information(eptr);
   fiber.DumpCallStack(logger, 0);
   fiber.SetSuspendedPromise(nullptr);
 }

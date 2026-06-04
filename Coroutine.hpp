@@ -14,7 +14,7 @@ namespace Omni {
 namespace Fiber {
 
 #ifndef NDEBUG
-void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise);
+void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, std::exception_ptr eptr);
 #endif
 
 template <typename RetType> class [[nodiscard]] Coroutine {
@@ -46,7 +46,7 @@ private:
       self._RetState = std::unexpected(std::current_exception());
 #ifndef NDEBUG
       self.SetInstructionPointer(__builtin_return_address(0));
-      DebugOutputFiberCallStack(self.GetFiber(), self);
+      DebugOutputFiberCallStack(self.GetFiber(), self, self._RetState.value().error());
 #endif
     }
     bool IsFinished() const noexcept { return _RetState.has_value(); }
