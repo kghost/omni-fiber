@@ -24,7 +24,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 
 // 1. Test case: Initial state of a newly created Event
 TEST(EventTest, InitialState) {
-  Event event;
+  Event<void> event;
   EXPECT_FALSE(event.AwaitReady());
 }
 
@@ -34,7 +34,7 @@ TEST(EventTest, EarlyFire) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event event;
+  Event<void> event;
   event.Fire();
   EXPECT_TRUE(event.AwaitReady());
 
@@ -57,7 +57,7 @@ TEST(EventTest, SingleAwaiter) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event event;
+  Event<void> event;
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -97,7 +97,7 @@ TEST(EventTest, MultipleAwaiters) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event event;
+  Event<void> event;
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -151,7 +151,7 @@ TEST(EventTest, MultipleAwaitersEarlyFire) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event event;
+  Event<void> event;
   event.Fire();
 
   bool child1Executed = false;
@@ -189,7 +189,7 @@ TEST(EventTest, MultipleFires) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event event;
+  Event<void> event;
   event.Fire();
   EXPECT_TRUE(event.AwaitReady());
 
@@ -212,7 +212,7 @@ TEST(EventTest, MultipleFires) {
 
 // 7. Test case: Safe destruction of Event when there is a live awaitable holding a reference to the context
 TEST(EventTest, DestructionSafety) {
-  auto eventPtr = std::make_unique<Event<>>();
+  auto eventPtr = std::make_unique<Event<void>>();
 
   // Obtain an awaitable object from the event, which populates eventPtr->_AwaitContext
   // and creates a SharedAwaitContext shared by the awaitable.

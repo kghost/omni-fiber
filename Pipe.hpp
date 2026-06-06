@@ -1,32 +1,36 @@
 #pragma once
 
+#include <cassert>
 #include <expected>
-#include <optional>
 #include <utility>
 
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
+#include <variant>
 
 #include "AwaiterCustom.hpp"
 #include "Coroutine.hpp"
-#include "SingleAwaitContext.hpp"
-#include "SingleAwaiter.hpp"
+#include "SharedAwaiter.hpp"
 
 namespace Omni {
 namespace Fiber {
 
+class PipeClosed {};
+
 // A single consumer single producer pipe.
 template <typename DataType> class Pipe final {
+private:
+  struct Empty {};
+  struct Closed {};
+
 public:
   explicit Pipe() {}
-  ~Pipe() {}
+  ~Pipe() { assert(std::holds_alternative<Closed>(_Data) && "Pipe must be closed before destruction"); }
 
   Pipe(Pipe&) = delete;
   Pipe& operator=(Pipe&) = delete;
   Pipe(Pipe&&) = delete;
   Pipe& operator=(Pipe&&) = delete;
-
-  class PipeClosed {};
 
   class Producer {
   private:
@@ -40,25 +44,27 @@ public:
     Producer(Producer&&) = delete;
     Producer& operator=(Producer&&) = delete;
 
-    bool AwaitReady() const { return !_Pipe._Data.has_value(); }
+    bool AwaitReady() const { return !std::holds_alternative<DataType>(_Pipe._Data); }
     void AwaitValue() {}
 
-    AwaiterCustom<Producer, SingleAwaiter> Put(DataType&& data) && {
-      assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
-      _Pipe._Data.emplace(std::move(data));
-      SingleAwaiter::Fire(_Pipe._AwaitReadContext);
-      return AwaiterCustom<Producer, SingleAwaiter>(_Pipe._AwaitWriteContext, *this);
-    }
-
-    Coroutine<void> Close() && {
-      assert(!_Pipe._IsClosed && !_Pipe._Data.has_value());
-      _Pipe._IsClosed = true;
-      SingleAwaiter::Fire(_Pipe._AwaitReadContext);
-      co_return;
-    }
+    auto Awaiter() { return AwaiterCustom<Producer, SharedAwaiter>(_Pipe._AwaitWriteContext, *this); }
+    Coroutine<std::expected<void, PipeClosed>> Put(DataType&& data) && { return PutData(std::forward<DataType>(data)); }
+    Coroutine<std::expected<void, PipeClosed>> Close() && { return PutData(Closed{}); }
 
   private:
     Pipe& _Pipe;
+
+    template <typename Value> Coroutine<std::expected<void, PipeClosed>> PutData(Value&& value) {
+      while (std::holds_alternative<DataType>(_Pipe._Data)) {
+        co_await Awaiter();
+      }
+      if (std::holds_alternative<Closed>(_Pipe._Data)) {
+        co_return std::unexpected<PipeClosed>{PipeClosed{}};
+      }
+      _Pipe._Data = std::forward<Value>(value);
+      SharedAwaiter::Fire(_Pipe._AwaitReadContext);
+      co_return std::expected<void, PipeClosed>{};
+    }
   };
 
   class Consumer {
@@ -73,36 +79,37 @@ public:
     Consumer(Consumer&&) = delete;
     Consumer& operator=(Consumer&&) = delete;
 
-    bool AwaitReady() const { return _Pipe._IsClosed || _Pipe._Data.has_value(); }
+    bool AwaitReady() const { return !std::holds_alternative<Empty>(_Pipe._Data); }
     std::expected<DataType, PipeClosed> AwaitValue() {
-      assert(_Pipe._IsClosed || _Pipe._Data.has_value());
-      if (_Pipe._Data.has_value()) {
-        auto ret = std::move(std::exchange(_Pipe._Data, std::nullopt).value());
-        SingleAwaiter::Fire(_Pipe._AwaitWriteContext);
+      assert(!std::holds_alternative<Empty>(_Pipe._Data));
+      if (std::holds_alternative<DataType>(_Pipe._Data)) {
+        DataType ret = std::get<DataType>(std::move(_Pipe._Data));
+        _Pipe._Data = Empty{};
+        SharedAwaiter::Fire(_Pipe._AwaitWriteContext);
         return ret;
-      } else if (_Pipe._IsClosed) {
+      } else if (std::holds_alternative<Closed>(_Pipe._Data)) {
         return std::unexpected<PipeClosed>{PipeClosed{}};
       } else {
         std::unreachable();
       }
     }
 
-    AwaiterCustom<Consumer, SingleAwaiter> operator co_await() && {
-      return AwaiterCustom<Consumer, SingleAwaiter>(_Pipe._AwaitReadContext, *this);
+    AwaiterCustom<Consumer, SharedAwaiter> operator co_await() && {
+      return AwaiterCustom<Consumer, SharedAwaiter>(_Pipe._AwaitReadContext, *this);
     }
 
   private:
     Pipe& _Pipe;
   };
 
+  bool IsClosed() const { return std::holds_alternative<Closed>(_Data); }
   Producer GetProducer() { return Producer(*this); }
   Consumer GetConsumer() { return Consumer(*this); }
 
 private:
-  SingleAwaiter::ContextStorage _AwaitReadContext;
-  SingleAwaiter::ContextStorage _AwaitWriteContext;
-  bool _IsClosed = false;
-  std::optional<DataType> _Data;
+  SharedAwaiter::ContextStorage _AwaitReadContext;
+  SharedAwaiter::ContextStorage _AwaitWriteContext;
+  std::variant<Empty, Closed, DataType> _Data;
 };
 
 } // namespace Fiber

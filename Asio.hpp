@@ -5,10 +5,10 @@
 
 #include <boost/asio.hpp>
 
+#include "Event.hpp"
 #include "Executor.hpp"
 #include "Fiber.hpp"
 #include "Manager.hpp"
-#include "OneshotEvent.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -33,7 +33,7 @@ private:
 
 template <typename... Results> class AsioResult {
 public:
-  explicit AsioResult() : _Event(std::make_shared<OneshotEvent<std::tuple<Results...>>>()) {}
+  explicit AsioResult() : _Event(std::make_shared<Event<std::tuple<Results...>>>()) {}
 
   AsioResult(const AsioResult&) = default;
   AsioResult& operator=(const AsioResult&) = default;
@@ -51,7 +51,7 @@ public:
   decltype(auto) operator co_await() { return _Event->operator co_await(); }
 
 private:
-  std::shared_ptr<OneshotEvent<std::tuple<Results...>>> _Event;
+  std::shared_ptr<Event<std::tuple<Results...>>> _Event;
 };
 
 template <typename Function> decltype(auto) AsioApply(Function&& func) {

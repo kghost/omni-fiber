@@ -116,7 +116,7 @@ TEST(FiberTest, CooperativeEvent) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event startEvent;
+  Event<void> startEvent;
   bool consumerFinished = false;
   bool producerFinished = false;
   std::vector<std::string> sequence;
@@ -213,8 +213,8 @@ TEST(FiberTest, WaitForBasic) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     Fiber& current = co_await GetCurrentFiber();
 
-    Event child1Event;
-    Event child2Event;
+    Event<void> child1Event;
+    Event<void> child2Event;
 
     auto child1 = current.Spawn("child1", [&]() -> Coroutine<void> {
       co_await child1Event;
@@ -260,8 +260,8 @@ TEST(FiberTest, WaitForAlreadyFinished) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     Fiber& current = co_await GetCurrentFiber();
 
-    Event resumeEvent1;
-    Event resumeEvent2;
+    Event<void> resumeEvent1;
+    Event<void> resumeEvent2;
     auto child = current.Spawn("early_bird", [&]() -> Coroutine<void> {
       resumeEvent1.Fire();
       resumeEvent2.Fire();
@@ -293,14 +293,14 @@ TEST(FiberTest, WaitForMultipleAlreadyFinished) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     Fiber& current = co_await GetCurrentFiber();
 
-    Event resumeEvent1;
+    Event<void> resumeEvent1;
     auto child1 = current.Spawn("first", [&]() -> Coroutine<void> {
       resumeEvent1.Fire();
       co_return;
     });
     co_await resumeEvent1;
 
-    Event resumeEvent2;
+    Event<void> resumeEvent2;
     auto child2 = current.Spawn("second", [&]() -> Coroutine<void> {
       resumeEvent2.Fire();
       co_return;
@@ -332,8 +332,8 @@ TEST(FiberTest, JoinInterleavedSignalLossBug) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     Fiber& current = co_await GetCurrentFiber();
 
-    Event event1;
-    Event event2;
+    Event<void> event1;
+    Event<void> event2;
 
     auto child1 = current.Spawn("child1", [&]() -> Coroutine<void> {
       co_await event1;
@@ -373,17 +373,17 @@ TEST(FiberTest, JoinInterleavedSignalLossBug) {
 
 // 11. Test Capture and Output of Fiber Callstack via Promise Chain
 #ifndef NDEBUG
-Coroutine<void> CallstackTrace_C(Event<>& event) {
+Coroutine<void> CallstackTrace_C(Event<void>& event) {
   co_await event;
   co_return;
 }
 
-Coroutine<void> CallstackTrace_B(Event<>& event) {
+Coroutine<void> CallstackTrace_B(Event<void>& event) {
   co_await CallstackTrace_C(event);
   co_return;
 }
 
-Coroutine<void> CallstackTrace_A(Event<>& event) {
+Coroutine<void> CallstackTrace_A(Event<void>& event) {
   co_await CallstackTrace_B(event);
   co_return;
 }
@@ -393,7 +393,7 @@ TEST(FiberTest, CallstackTrace) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event event;
+  Event<void> event;
   bool finished = false;
 
   // Set up Boost.Log capture

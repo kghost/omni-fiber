@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Fiber.hpp"
+#include "FiberPromise.hpp"
+#include "Manager.hpp"
 
 namespace Omni::Fiber {
 
@@ -10,8 +12,8 @@ public:
   constexpr bool await_ready() const noexcept { return false; }
 
   template <typename PromiseType> bool await_suspend(std::coroutine_handle<PromiseType> caller) noexcept {
-    auto& promise = caller.promise();
-    auto& fiber = promise.GetFiber();
+    FiberPromise& promise = caller.promise();
+    Fiber& fiber = promise.GetFiber();
     promise.SetInstructionPointer(__builtin_return_address(0));
     fiber.SetSuspendedPromise(&promise);
     boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
@@ -30,9 +32,9 @@ public:
   constexpr bool await_ready() const noexcept { return false; }
 
   template <typename PromiseType> bool await_suspend(std::coroutine_handle<PromiseType> caller) noexcept {
-    auto& promise = caller.promise();
-    auto& fiber = promise.GetFiber();
-    auto& manager = fiber.GetManager();
+    FiberPromise& promise = caller.promise();
+    Fiber& fiber = promise.GetFiber();
+    Manager& manager = fiber.GetManager();
     promise.SetInstructionPointer(__builtin_return_address(0));
     fiber.SetSuspendedPromise(&promise);
     manager.DumpAllFibers();

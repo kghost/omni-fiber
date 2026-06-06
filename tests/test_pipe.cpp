@@ -25,12 +25,18 @@ void RunEventLoop(boost::asio::io_context& io) {
 
 // 1. Test case: Initial state of a newly created Pipe
 TEST(PipeTest, InitialState) {
-  Pipe<int> pipe;
-  auto producer = pipe.GetProducer();
-  auto consumer = pipe.GetConsumer();
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
 
-  EXPECT_TRUE(producer.AwaitReady());
-  EXPECT_FALSE(consumer.AwaitReady());
+  Pipe<int> pipe;
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    EXPECT_TRUE(pipe.GetProducer().AwaitReady());
+    EXPECT_FALSE(pipe.GetConsumer().AwaitReady());
+    co_await pipe.GetProducer().Close();
+    co_return;
+  });
+  RunEventLoop(io);
 }
 
 // 2. Test case: Basic transmission of data without suspending (direct write & read)
@@ -49,7 +55,6 @@ TEST(PipeTest, BasicPutAndGet) {
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       EXPECT_TRUE(pipe.GetProducer().AwaitReady());
       co_await pipe.GetProducer().Put(42);
-      EXPECT_TRUE(pipe.GetProducer().AwaitReady());
       executed = true;
       co_return;
     });
@@ -67,6 +72,7 @@ TEST(PipeTest, BasicPutAndGet) {
 
     co_await current.Join(producerFiber);
     co_await current.Join(consumerFiber);
+    co_await pipe.GetProducer().Close();
     co_return;
   });
 
@@ -156,6 +162,7 @@ TEST(PipeTest, ProducerSuspension) {
 
     co_await current.Join(producerFiber);
     co_await current.Join(consumerFiber);
+    co_await pipe.GetProducer().Close();
     co_return;
   });
 
@@ -163,11 +170,11 @@ TEST(PipeTest, ProducerSuspension) {
 
   ASSERT_EQ(sequence.size(), 6);
   EXPECT_EQ(sequence[0], "prod_put_1");
-  EXPECT_EQ(sequence[1], "cons_read_1");
-  EXPECT_EQ(sequence[2], "cons_read_2");
-  EXPECT_EQ(sequence[3], "prod_put_2");
-  EXPECT_EQ(sequence[4], "cons_done");
-  EXPECT_EQ(sequence[5], "prod_done");
+  EXPECT_EQ(sequence[1], "prod_put_2");
+  EXPECT_EQ(sequence[2], "cons_read_1");
+  EXPECT_EQ(sequence[3], "cons_read_2");
+  EXPECT_EQ(sequence[4], "prod_done");
+  EXPECT_EQ(sequence[5], "cons_done");
 }
 
 // 5. Test case: Consumer suspensions due to empty buffer
@@ -223,25 +230,12 @@ TEST(PipeTest, ConsumerSuspension) {
   ASSERT_EQ(sequence.size(), 8);
   EXPECT_EQ(sequence[0], "cons_read_1");
   EXPECT_EQ(sequence[1], "prod_put_1");
-  EXPECT_EQ(sequence[2], "cons_got_1");
-  EXPECT_EQ(sequence[3], "cons_read_2");
-  EXPECT_EQ(sequence[4], "prod_close");
+  EXPECT_EQ(sequence[2], "prod_close");
+  EXPECT_EQ(sequence[3], "cons_got_1");
+  EXPECT_EQ(sequence[4], "cons_read_2");
   EXPECT_EQ(sequence[5], "prod_done");
   EXPECT_EQ(sequence[6], "cons_got_2");
   EXPECT_EQ(sequence[7], "cons_done");
-}
-
-// 6. Test case: Destruction safety
-TEST(PipeTest, DestructionSafety) {
-  auto pipePtr = std::make_unique<Pipe<int>>();
-
-  // Obtain an awaitable object from the producer, which creates a context
-  auto awaitable = pipePtr->GetProducer().Put(42);
-
-  // Destroy the pipe while the awaitable is still alive
-  pipePtr.reset();
-
-  EXPECT_EQ(pipePtr, nullptr);
 }
 
 // 7. Test case: Pipe supports move-only objects
@@ -278,6 +272,7 @@ TEST(PipeTest, MoveOnlyObject) {
 
     co_await current.Join(producerFiber);
     co_await current.Join(consumerFiber);
+    co_await pipe.GetProducer().Close();
     co_return;
   });
 

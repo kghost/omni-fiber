@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <optional>
 #include <sys/epoll.h>
 #include <type_traits>
@@ -12,7 +13,7 @@
 namespace Omni {
 namespace Fiber {
 
-template <typename DataType = void> class Event final {
+template <typename DataType> class Event final {
 public:
   explicit Event() = default;
 
@@ -72,9 +73,15 @@ public:
   }
 
   template <typename U = DataType>
-    requires(!std::is_void_v<U>)
+    requires(!std::is_void_v<U> && std::copyable<DataType>)
   DataType AwaitValue() {
     return _Data.value();
+  }
+
+  template <typename U = DataType>
+    requires(!std::is_void_v<U> && !std::copyable<DataType> && std::movable<DataType>)
+  DataType AwaitValue() {
+    return std::move(_Data.value());
   }
 
   OMNIFIBER_API AwaiterCustom<Event, SharedAwaiter> operator co_await() {

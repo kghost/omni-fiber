@@ -31,8 +31,8 @@ TEST(SelectTest, SingleEventCompletes) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
-  Event<> event2;
+  Event<void> event1;
+  Event<void> event2;
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -68,8 +68,8 @@ TEST(SelectTest, MultipleSimultaneousEvents) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
-  Event<> event2;
+  Event<void> event1;
+  Event<void> event2;
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -108,8 +108,8 @@ TEST(SelectTest, EarlyFiredEvents) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
-  Event<> event2;
+  Event<void> event1;
+  Event<void> event2;
   std::vector<std::string> sequence;
 
   event2.Fire(); // Fire event2 early
@@ -168,8 +168,8 @@ TEST(SelectTest, CleanRaiiCancellation) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
-  Event<> event2;
+  Event<void> event1;
+  Event<void> event2;
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -221,6 +221,7 @@ TEST(SelectTest, PipeConsumerSelect) {
     }));
 
     co_await current.Join(notifier);
+    co_await pipe.GetProducer().Close();
     co_return;
   });
 
@@ -255,6 +256,7 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
     }));
 
     co_await current.Join(notifier);
+    co_await pipe.GetProducer().Close();
     co_return;
   });
 
@@ -270,9 +272,9 @@ TEST(SelectTest, CoroutineCallbacks) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
+  Event<void> event1;
   Event<int> event2;
-  Event<> done_event1;
+  Event<void> done_event1;
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -324,7 +326,7 @@ TEST(SelectTest, CoroutineCallbacksSimultaneous) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
+  Event<void> event1;
   Event<int> event2;
   std::vector<std::string> sequence;
 
@@ -374,7 +376,7 @@ TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
+  Event<void> event1;
   boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
   std::vector<std::string> sequence;
 
@@ -401,7 +403,7 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
+  Event<void> event1;
   boost::asio::steady_timer timer(io, std::chrono::seconds(5));
   std::vector<std::string> sequence;
 
@@ -443,7 +445,7 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventEarlyFired) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
+  Event<void> event1;
   boost::asio::steady_timer timer(io, std::chrono::seconds(5));
   std::vector<std::string> sequence;
 
@@ -501,6 +503,7 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
     timer.cancel();
 
     co_await current.Join(notifier);
+    co_await pipe.GetProducer().Close();
     co_return;
   });
 
@@ -534,6 +537,7 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
                     SelectPair(timer.async_wait(AsioUseFiber),
                                AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
+    co_await pipe.GetProducer().Close();
     co_return;
   });
 
@@ -551,12 +555,12 @@ TEST(SelectTest, SelectReturnTupleResults) {
   AsioExecutor executor(io);
   Manager manager(executor);
 
-  Event<> event1;
-  Event<> event2;
+  Event<void> event1;
+  Event<void> event2;
   Event<int> event3;
   Event<int> event4;
-  Event<> event5;
-  Event<> event6;
+  Event<void> event5;
+  Event<void> event6;
 
   bool executed = false;
 

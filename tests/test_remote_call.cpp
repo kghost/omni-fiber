@@ -45,8 +45,9 @@ TEST(RemoteCallTest, BasicValueCall) {
 
     auto client = current.Spawn("client", [&]() -> Coroutine<void> {
       // Send rpc that takes int and returns std::string
-      std::string reply = co_await rc.Call([]() -> Coroutine<std::string> { co_return "hello " + std::to_string(42); });
-      EXPECT_EQ(reply, "hello 42");
+      auto reply = co_await rc.Call([]() -> Coroutine<std::string> { co_return "hello " + std::to_string(42); });
+      EXPECT_TRUE(reply.has_value());
+      EXPECT_EQ(reply.value(), "hello 42");
       executed = true;
       co_await rc.Close();
       co_return;
@@ -123,8 +124,9 @@ TEST(RemoteCallTest, MoveOnlyTypes) {
         EXPECT_EQ(*r, 1337);
         co_return std::make_unique<int>(*r + 1);
       });
-      EXPECT_NE(reply, nullptr);
-      EXPECT_EQ(*reply, 1338);
+      EXPECT_TRUE(reply.has_value());
+      EXPECT_NE(reply.value(), nullptr);
+      EXPECT_EQ(*reply.value(), 1338);
       executed = true;
       co_await rc.Close();
       co_return;
@@ -158,8 +160,9 @@ TEST(RemoteCallTest, SequentialCalls) {
 
     auto client = current.Spawn("client", [&]() -> Coroutine<void> {
       for (int i = 0; i < 5; ++i) {
-        int reply = co_await rc.Call([i]() -> Coroutine<int> { co_return i * 2; });
-        replies.push_back(reply);
+        auto reply = co_await rc.Call([i]() -> Coroutine<int> { co_return i * 2; });
+        EXPECT_TRUE(reply.has_value());
+        replies.push_back(reply.value());
       }
       co_await rc.Close();
       co_return;
@@ -195,14 +198,16 @@ TEST(RemoteCallTest, ConcurrentCalls) {
     });
 
     auto client1 = current.Spawn("client1", [&]() -> Coroutine<void> {
-      int reply = co_await rc.Call([]() -> Coroutine<int> { co_return 100; });
-      replies.push_back(reply);
+      auto reply = co_await rc.Call([]() -> Coroutine<int> { co_return 100; });
+      EXPECT_TRUE(reply.has_value());
+      replies.push_back(reply.value());
       co_return;
     });
 
     auto client2 = current.Spawn("client2", [&]() -> Coroutine<void> {
-      int reply = co_await rc.Call([]() -> Coroutine<int> { co_return 200; });
-      replies.push_back(reply);
+      auto reply = co_await rc.Call([]() -> Coroutine<int> { co_return 200; });
+      EXPECT_TRUE(reply.has_value());
+      replies.push_back(reply.value());
       co_return;
     });
 
@@ -257,7 +262,7 @@ TEST(RemoteCallTest, SelectIntegration) {
   Manager manager(executor);
 
   RemoteCall rc;
-  Event<> event1;
+  Event<void> event1;
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -282,8 +287,9 @@ TEST(RemoteCallTest, SelectIntegration) {
     });
 
     auto client = current.Spawn("client", [&]() -> Coroutine<void> {
-      std::string reply = co_await rc.Call([]() -> Coroutine<std::string> { co_return "rpc_done"; });
-      EXPECT_EQ(reply, "rpc_done");
+      auto reply = co_await rc.Call([]() -> Coroutine<std::string> { co_return "rpc_done"; });
+      EXPECT_TRUE(reply.has_value());
+      EXPECT_EQ(reply.value(), "rpc_done");
       sequence.push_back("client_rpc_returned");
 
       // Now fire event1 to exit the select loop
@@ -293,6 +299,7 @@ TEST(RemoteCallTest, SelectIntegration) {
 
     co_await current.Join(select_loop);
     co_await current.Join(client);
+    co_await rc.Close();
     co_return;
   });
 
