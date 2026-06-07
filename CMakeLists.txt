@@ -65,6 +65,10 @@ foreach(suffix "" "-asan")
     Boost::thread
   )
 
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(${target} PUBLIC stdc++exp)
+  endif()
+
   if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     pkg_check_modules(LIBDW REQUIRED libdw)
     target_link_libraries(${target} PRIVATE ${LIBDW_LIBRARIES})

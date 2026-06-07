@@ -6,6 +6,7 @@
 #include <expected>
 #include <functional>
 #include <optional>
+#include <stacktrace>
 #include <type_traits>
 
 #include "FiberPromise.hpp"
@@ -42,10 +43,15 @@ private:
       };
       return FinalAwaiter{};
     }
-    void unhandled_exception(this Impl& self) {
+    void unhandled_exception(this Impl& self
+#ifndef NDEBUG
+                             ,
+                             void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
+    ) {
       self._RetState = std::unexpected(std::current_exception());
 #ifndef NDEBUG
-      self.SetInstructionPointer(__builtin_return_address(0));
+      self.SetInstructionPointer(ip);
       DebugOutputFiberCallStack(self.GetFiber(), self, self._RetState.value().error());
 #endif
     }
@@ -93,11 +99,17 @@ public:
   Coroutine& operator co_await() { return *this; }
 
   bool await_ready() const noexcept { return _Callee.promise().IsFinished(); }
-  template <typename T> std::coroutine_handle<> await_suspend(std::coroutine_handle<T> caller) noexcept {
+  template <typename T>
+  std::coroutine_handle<> await_suspend(std::coroutine_handle<T> caller
+#ifndef NDEBUG
+                                        ,
+                                        void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
+                                            ) noexcept {
     promise_type& promise = _Callee.promise();
     promise._CallerPromise.emplace(caller.promise());
 #ifndef NDEBUG
-    caller.promise().SetInstructionPointer(__builtin_return_address(0));
+    caller.promise().SetInstructionPointer(ip);
 #endif
     return _Callee;
   }

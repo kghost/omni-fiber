@@ -3,6 +3,7 @@
 #include <coroutine>
 #include <functional>
 #include <optional>
+#include <stacktrace>
 
 namespace Omni {
 namespace Fiber {
@@ -49,11 +50,17 @@ public:
   Fiber& GetOwnerPromise() const { return _OwnerFiber.value().get(); }
   void Schedule() { Suspender::Schedule(_OwnerFiber.value().get()); }
 
-  template <typename PromiseType> void DoAwaitSuspend(std::coroutine_handle<PromiseType> caller) {
+  template <typename PromiseType>
+  void DoAwaitSuspend(std::coroutine_handle<PromiseType> caller
+#ifndef NDEBUG
+                      ,
+                      void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
+  ) {
     auto& promise = caller.promise();
     _OwnerFiber = promise.GetFiber();
 #ifndef NDEBUG
-    promise.SetInstructionPointer(__builtin_return_address(0));
+    promise.SetInstructionPointer(ip);
     Suspender::SetSuspendedPromise(_OwnerFiber.value().get(), promise);
 #endif
     Suspender::DoSuspend(_OwnerFiber.value().get(), caller);

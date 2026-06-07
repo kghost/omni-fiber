@@ -11,10 +11,16 @@ class StackTrace {
 public:
   constexpr bool await_ready() const noexcept { return false; }
 
-  template <typename PromiseType> bool await_suspend(std::coroutine_handle<PromiseType> caller) noexcept {
+  template <typename PromiseType>
+  bool await_suspend(std::coroutine_handle<PromiseType> caller
+#ifndef NDEBUG
+                     ,
+                     void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
+                         ) noexcept {
     FiberPromise& promise = caller.promise();
     Fiber& fiber = promise.GetFiber();
-    promise.SetInstructionPointer(__builtin_return_address(0));
+    promise.SetInstructionPointer(ip);
     fiber.SetSuspendedPromise(&promise);
     boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
     fiber.DumpCallStack(logger, 0);
@@ -31,11 +37,17 @@ class StackTraceAllFibers {
 public:
   constexpr bool await_ready() const noexcept { return false; }
 
-  template <typename PromiseType> bool await_suspend(std::coroutine_handle<PromiseType> caller) noexcept {
+  template <typename PromiseType>
+  bool await_suspend(std::coroutine_handle<PromiseType> caller
+#ifndef NDEBUG
+                     ,
+                     void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
+                         ) noexcept {
     FiberPromise& promise = caller.promise();
     Fiber& fiber = promise.GetFiber();
     Manager& manager = fiber.GetManager();
-    promise.SetInstructionPointer(__builtin_return_address(0));
+    promise.SetInstructionPointer(ip);
     fiber.SetSuspendedPromise(&promise);
     manager.DumpAllFibers();
     fiber.SetSuspendedPromise(nullptr);
