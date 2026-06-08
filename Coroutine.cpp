@@ -16,8 +16,16 @@ namespace Fiber {
 void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, std::exception_ptr eptr) {
   fiber.SetSuspendedPromise(&promise);
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
+  std::string exceptionInfo = "Unknown exception";
+  if (eptr) {
+    try {
+      std::rethrow_exception(eptr);
+    } catch (...) {
+      exceptionInfo = boost::current_exception_diagnostic_information();
+    }
+  }
   BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::error)
-      << "Unhandled exception in fiber " << fiber.GetName() << ": " << boost::diagnostic_information(eptr);
+      << "Unhandled exception in fiber " << fiber.GetName() << ": " << exceptionInfo;
   fiber.DumpCallStack(logger, 0);
   fiber.SetSuspendedPromise(nullptr);
 }
