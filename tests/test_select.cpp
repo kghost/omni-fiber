@@ -13,6 +13,7 @@
 #include "Manager.hpp"
 #include "Pipe.hpp"
 #include "Select.hpp"
+#include "Yield.hpp"
 
 using namespace Omni::Fiber;
 
@@ -595,6 +596,48 @@ TEST(SelectTest, SelectReturnTupleResults) {
     EXPECT_EQ(std::get<5>(results), true);
 
     executed = true;
+    co_await current.Join(notifier);
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(executed);
+}
+
+// 16. Test case: Select trigger same event in callback
+TEST(SelectTest, SelectTriggerEventInCallback) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io);
+  Manager manager(executor);
+
+  Event<void> event1;
+  Event<void> event2;
+
+  bool executed = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentFiber();
+
+    auto selector = current.Spawn("selector", [&]() -> Coroutine<void> {
+      auto results =
+          co_await Select(SelectPair(event1, [&]() -> void { event2.Fire(); }), SelectPair(event2, []() -> void {}));
+      // Verify types of results
+      static_assert(std::is_same_v<decltype(results), std::tuple<bool, bool>>);
+
+      // Verify values of results
+      EXPECT_EQ(std::get<0>(results), true);
+      EXPECT_EQ(std::get<1>(results), false);
+    });
+
+    co_await Yield();
+
+    auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
+      event1.Fire();
+      co_return;
+    });
+
+    executed = true;
+    co_await current.Join(selector);
     co_await current.Join(notifier);
     co_return;
   });
