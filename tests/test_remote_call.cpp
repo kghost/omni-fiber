@@ -271,17 +271,17 @@ TEST(RemoteCallTest, SelectIntegration) {
     auto select_loop = current.Spawn("select_loop", [&]() -> Coroutine<void> {
       bool loop_active = true;
       while (loop_active) {
-        co_await Select(SelectPair(rc.GetServiceAwaitor(),
-                                   [&](auto req) -> Coroutine<void> {
-                                     if (!co_await RemoteCall::HandleRequest(std::move(req))) {
-                                       loop_active = false;
-                                       co_return;
-                                     }
-                                   }),
-                        SelectPair(event1, [&]() {
-                          sequence.push_back("event1_fired");
-                          loop_active = false;
-                        }));
+        auto [rpcResult, event1Result] = co_await Select(SelectPair(rc.GetServiceAwaitor(), RemoteCall::HandleRequest),
+                                                         SelectPair(event1, [&]() -> bool {
+                                                           sequence.push_back("event1_fired");
+                                                           return false;
+                                                         }));
+        if (rpcResult.has_value() && !rpcResult.value()) {
+          loop_active = false;
+        }
+        if (event1Result.has_value() && !event1Result.value()) {
+          loop_active = false;
+        }
       }
       co_return;
     });
