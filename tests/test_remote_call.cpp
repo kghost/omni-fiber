@@ -14,6 +14,7 @@
 #include "Manager.hpp"
 #include "RemoteCall.hpp"
 #include "Select.hpp"
+#include "SelectPair.hpp"
 
 using namespace Omni::Fiber;
 

@@ -52,6 +52,18 @@ target_compile_options(omnifiber_test_select PRIVATE -fsanitize=address -fno-omi
 target_link_options(omnifiber_test_select PRIVATE -fsanitize=address)
 gtest_discover_tests(omnifiber_test_select)
 
+add_executable(omnifiber_test_select_pair_list test_select_pair_list.cpp)
+target_link_libraries(omnifiber_test_select_pair_list PRIVATE omni-fiber-asan GTest::gtest_main Boost::log Boost::thread)
+target_compile_options(omnifiber_test_select_pair_list PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(omnifiber_test_select_pair_list PRIVATE -fsanitize=address)
+gtest_discover_tests(omnifiber_test_select_pair_list)
+
+add_executable(omnifiber_test_select_pair_dynamic_list test_select_pair_dynamic_list.cpp)
+target_link_libraries(omnifiber_test_select_pair_dynamic_list PRIVATE omni-fiber-asan GTest::gtest_main Boost::log Boost::thread)
+target_compile_options(omnifiber_test_select_pair_dynamic_list PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(omnifiber_test_select_pair_dynamic_list PRIVATE -fsanitize=address)
+gtest_discover_tests(omnifiber_test_select_pair_dynamic_list)
+
 add_executable(omnifiber_test_remote_call test_remote_call.cpp)
 target_link_libraries(omnifiber_test_remote_call PRIVATE omni-fiber-asan GTest::gtest_main Boost::log Boost::thread)
 target_compile_options(omnifiber_test_remote_call PRIVATE -fsanitize=address -fno-omit-frame-pointer)

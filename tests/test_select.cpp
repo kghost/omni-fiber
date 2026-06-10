@@ -13,6 +13,7 @@
 #include "Manager.hpp"
 #include "Pipe.hpp"
 #include "Select.hpp"
+#include "SelectPair.hpp"
 #include "Yield.hpp"
 
 using namespace Omni::Fiber;

@@ -120,6 +120,9 @@ if(NOT OMNIFIBER_INTERNAL)
     Pipe.hpp
     RemoteCall.hpp
     Select.hpp
+    SelectPair.hpp
+    SelectPairList.hpp
+    SelectPairDynamicList.hpp
     Yield.hpp
     shared.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omni-fiber
