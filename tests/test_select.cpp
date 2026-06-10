@@ -584,17 +584,20 @@ TEST(SelectTest, SelectReturnTupleResults) {
                                    SelectPair(event6, []() -> Coroutine<void> { co_return; }));
 
     // Verify types of results
-    static_assert(
-        std::is_same_v<decltype(results), std::tuple<bool, bool, std::optional<int>, std::optional<std::string>,
-                                                     std::optional<double>, bool>>);
+    using EvNotReady = AwaiterTraits<decltype(std::declval<Event<void>&>().operator co_await())>::AwaiterNotReady;
+    using EIntNotReady = AwaiterTraits<decltype(std::declval<Event<int>&>().operator co_await())>::AwaiterNotReady;
+    static_assert(std::is_same_v<decltype(results),
+                                 std::tuple<std::expected<void, EvNotReady>, std::expected<void, EvNotReady>,
+                                            std::expected<int, EIntNotReady>, std::expected<std::string, EIntNotReady>,
+                                            std::expected<double, EvNotReady>, std::expected<void, EvNotReady>>>);
 
     // Verify values of results
-    EXPECT_EQ(std::get<0>(results), true);
-    EXPECT_EQ(std::get<1>(results), false);
-    EXPECT_EQ(std::get<2>(results), std::optional<int>(10));
-    EXPECT_EQ(std::get<3>(results), std::nullopt);
-    EXPECT_EQ(std::get<4>(results), std::optional<double>(5.5));
-    EXPECT_EQ(std::get<5>(results), true);
+    EXPECT_TRUE(std::get<0>(results).has_value());
+    EXPECT_FALSE(std::get<1>(results).has_value());
+    EXPECT_EQ(std::get<2>(results).value(), 10);
+    EXPECT_FALSE(std::get<3>(results).has_value());
+    EXPECT_EQ(std::get<4>(results).value(), 5.5);
+    EXPECT_TRUE(std::get<5>(results).has_value());
 
     executed = true;
     co_await current.Join(notifier);
@@ -623,11 +626,13 @@ TEST(SelectTest, SelectTriggerEventInCallback) {
       auto results =
           co_await Select(SelectPair(event1, [&]() -> void { event2.Fire(); }), SelectPair(event2, []() -> void {}));
       // Verify types of results
-      static_assert(std::is_same_v<decltype(results), std::tuple<bool, bool>>);
+      using EvNotReady = AwaiterTraits<decltype(std::declval<Event<void>&>().operator co_await())>::AwaiterNotReady;
+      static_assert(std::is_same_v<decltype(results),
+                                   std::tuple<std::expected<void, EvNotReady>, std::expected<void, EvNotReady>>>);
 
       // Verify values of results
-      EXPECT_EQ(std::get<0>(results), true);
-      EXPECT_EQ(std::get<1>(results), false);
+      EXPECT_TRUE(std::get<0>(results).has_value());
+      EXPECT_FALSE(std::get<1>(results).has_value());
     });
 
     co_await Yield();

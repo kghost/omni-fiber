@@ -1,6 +1,7 @@
 #pragma once
 
 #include <coroutine>
+#include <expected>
 #include <functional>
 #include <optional>
 #include <stacktrace>
@@ -27,9 +28,9 @@ struct FiberYielder : public FiberActionBase {
 };
 
 template <typename Awaiter> struct AwaiterTraits {
+  struct AwaiterNotReady {};
   using AwaiterResultType = decltype(std::declval<Awaiter>().await_resume());
-  using AwaiterResultOptionalType =
-      std::conditional_t<std::is_void_v<AwaiterResultType>, bool, std::optional<AwaiterResultType>>;
+  using AwaiterResultExpectedType = std::expected<AwaiterResultType, AwaiterNotReady>;
 };
 
 template <typename Suspender> class AwaiterBase {

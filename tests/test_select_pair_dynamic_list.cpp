@@ -196,8 +196,8 @@ TEST(SelectPairDynamicListTest, UsedDirectlyInsideSelectMixed) {
 
     sequence.push_back("select_done");
 
-    EXPECT_TRUE(list_result);
-    EXPECT_FALSE(event3_result);
+    EXPECT_TRUE(list_result.has_value());
+    EXPECT_FALSE(event3_result.has_value());
 
     co_await current.Join(notifier);
     co_return;

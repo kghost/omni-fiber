@@ -1,7 +1,7 @@
 #pragma once
 
+#include <expected>
 #include <memory>
-#include <optional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -29,7 +29,7 @@ private:
   using Awaiter = decltype(std::move(std::declval<AwaitableStorage&>()).operator co_await());
   using AwaiterTraitsType = AwaiterTraits<Awaiter>;
   using AwaiterResultType = typename AwaiterTraitsType::AwaiterResultType;
-  using AwaiterResultOptionalType = typename AwaiterTraitsType::AwaiterResultOptionalType;
+  using AwaiterResultExpectedType = typename AwaiterTraitsType::AwaiterResultExpectedType;
 
   AwaitableStorage _awaitable;
   CallbackStorage _callback;
@@ -49,24 +49,20 @@ public:
   }
 
   Coroutine<void> run_callback_if_ready() override {
-    AwaiterResultOptionalType result;
+    AwaiterResultExpectedType result;
     if (_awaiter->await_ready()) {
       if constexpr (std::is_void_v<AwaiterResultType>) {
         _awaiter->await_resume();
-        result = true;
+        result = {};
       } else {
         result = _awaiter->await_resume();
       }
     } else {
-      if constexpr (std::is_void_v<AwaiterResultType>) {
-        result = false;
-      } else {
-        result = std::nullopt;
-      }
+      result = std::unexpected(typename AwaiterTraitsType::AwaiterNotReady{});
     }
 
-    if constexpr (std::is_same_v<std::decay_t<decltype(result)>, bool>) {
-      if (result) {
+    if constexpr (std::is_void_v<AwaiterResultType>) {
+      if (result.has_value()) {
         if constexpr (requires { typename decltype(_callback())::CoroutineReturnType; }) {
           co_await _callback();
         } else {
@@ -128,19 +124,19 @@ public:
   };
 
   using Awaiter = ListAwaiter;
-  using AwaiterResultOptionalType = bool;
-  using ResultType = bool;
+  using AwaiterResultExpectedType = std::expected<void, typename AwaiterTraits<ListAwaiter>::AwaiterNotReady>;
+  using ResultType = std::expected<void, typename AwaiterTraits<ListAwaiter>::AwaiterNotReady>;
 
   ListAwaiter operator co_await() { return ListAwaiter(*this); }
 
   operator Awaiter() { return Awaiter(*this); }
 
-  Coroutine<bool> RunCallback(bool result) {
-    if (result) {
+  Coroutine<ResultType> RunCallback(AwaiterResultExpectedType& result) {
+    if (result.has_value()) {
       co_await DoSelect();
-      co_return true;
+      co_return ResultType{};
     }
-    co_return false;
+    co_return std::unexpected(typename AwaiterTraits<ListAwaiter>::AwaiterNotReady{});
   }
 
 private:

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <optional>
+#include <expected>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -16,8 +16,8 @@ template <typename... Awaitables> class SelectAwaiter : public AwaiterBase<Fiber
 private:
   static_assert(((requires { typename Awaitables::Awaiter::AwaiterBaseImpl; }) && ...),
                 "All awaiters in Select must derive from AwaiterBase");
-  static_assert(((requires { typename Awaitables::AwaiterResultOptionalType; }) && ...),
-                "All awaiters in Select must have AwaiterResultOptionalType");
+  static_assert(((requires { typename Awaitables::AwaiterResultExpectedType; }) && ...),
+                "All awaiters in Select must have AwaiterResultExpectedType");
 
 public:
   explicit SelectAwaiter(Awaitables&... aAwaitables) : _Awaiters(aAwaitables...) {}
@@ -37,21 +37,17 @@ public:
     OnAwaitSuspend();
   }
 
-  std::tuple<typename Awaitables::AwaiterResultOptionalType...> await_resume() {
-    auto resume = []<typename Awaiter>(Awaiter& awaiter) -> typename AwaiterTraits<Awaiter>::AwaiterResultOptionalType {
+  std::tuple<typename Awaitables::AwaiterResultExpectedType...> await_resume() {
+    auto resume = []<typename Awaiter>(Awaiter& awaiter) -> typename AwaiterTraits<Awaiter>::AwaiterResultExpectedType {
       if (awaiter.await_ready()) {
         if constexpr (std::is_void_v<decltype(awaiter.await_resume())>) {
           awaiter.await_resume();
-          return true;
+          return {};
         } else {
           return awaiter.await_resume();
         }
       } else {
-        if constexpr (std::is_void_v<decltype(awaiter.await_resume())>) {
-          return false;
-        } else {
-          return std::nullopt;
-        }
+        return std::unexpected(typename AwaiterTraits<Awaiter>::AwaiterNotReady{});
       }
     };
 

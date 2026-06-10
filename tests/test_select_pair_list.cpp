@@ -57,11 +57,11 @@ TEST(SelectPairListTest, SingleEventCompletes) {
     auto [results] = co_await Select(list);
 
     EXPECT_EQ(results.size(), 5);
-    EXPECT_TRUE(results[2]);
-    EXPECT_FALSE(results[0]);
-    EXPECT_FALSE(results[1]);
-    EXPECT_FALSE(results[3]);
-    EXPECT_FALSE(results[4]);
+    EXPECT_TRUE(results[2].has_value());
+    EXPECT_FALSE(results[0].has_value());
+    EXPECT_FALSE(results[1].has_value());
+    EXPECT_FALSE(results[3].has_value());
+    EXPECT_FALSE(results[4].has_value());
 
     co_await current.Join(notifier);
     co_return;
@@ -180,9 +180,9 @@ TEST(SelectPairListTest, CallbackReturnValues) {
     auto [results] = co_await Select(list);
 
     EXPECT_EQ(results.size(), 3);
-    EXPECT_EQ(results[0], std::nullopt);
-    EXPECT_EQ(results[1], std::optional<int>(200));
-    EXPECT_EQ(results[2], std::nullopt);
+    EXPECT_FALSE(results[0].has_value());
+    EXPECT_EQ(results[1].value(), 200);
+    EXPECT_FALSE(results[2].has_value());
 
     executed = true;
     co_await current.Join(notifier);
@@ -224,8 +224,8 @@ TEST(SelectPairListTest, UsedInsideSelect) {
                                [&](auto results) {
                                  sequence.push_back("list_callback");
                                  EXPECT_EQ(results.size(), 2);
-                                 EXPECT_FALSE(results[0]);
-                                 EXPECT_TRUE(results[1]);
+                                 EXPECT_FALSE(results[0].has_value());
+                                 EXPECT_TRUE(results[1].has_value());
                                }),
                     SelectPair(event3, [&]() { sequence.push_back("callback_event3"); }));
 
@@ -277,9 +277,9 @@ TEST(SelectPairListTest, UsedDirectlyInsideSelectMixed) {
     sequence.push_back("select_done");
 
     EXPECT_EQ(list_results.size(), 2);
-    EXPECT_FALSE(list_results[0]);
-    EXPECT_TRUE(list_results[1]);
-    EXPECT_FALSE(event3_result);
+    EXPECT_FALSE(list_results[0].has_value());
+    EXPECT_TRUE(list_results[1].has_value());
+    EXPECT_FALSE(event3_result.has_value());
 
     co_await current.Join(notifier);
     co_return;

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <expected>
 #include <memory>
-#include <optional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -23,31 +23,11 @@ public:
   };
 
   struct ListAwaiter;
-  using Awaiter = ListAwaiter;
 
   using UnderlyingAwaiter = decltype(std::move(std::declval<AwaitableStorage&>()).operator co_await());
   using AwaiterTraitsType = AwaiterTraits<UnderlyingAwaiter>;
   using AwaiterResultType = typename AwaiterTraitsType::AwaiterResultType;
-  using UnderlyingAwaiterResultOptionalType = typename AwaiterTraitsType::AwaiterResultOptionalType;
-  using AwaiterResultOptionalType = std::optional<std::vector<UnderlyingAwaiterResultOptionalType>>;
-
-  using CallbackResultType = decltype(([] -> decltype(auto) {
-    if constexpr (std::is_void_v<AwaiterResultType>) {
-      return std::type_identity<decltype(std::declval<CallbackStorage&>()())>{};
-    } else {
-      return std::type_identity<decltype(std::declval<CallbackStorage&>()(std::declval<AwaiterResultType>()))>{};
-    }
-  })())::type;
-
-  using CallbackReturn = typename CoroutineTraits<CallbackResultType>::CoroutineReturnTypeOrOriginalType;
-  using SingleResultType = std::conditional_t<std::is_void_v<CallbackReturn>, bool, std::optional<CallbackReturn>>;
-  using ResultType = std::vector<SingleResultType>;
-
-  explicit SelectPairList() = default;
-
-  void Add(Awaitable&& awaitable, Callback&& callback) {
-    _pairs.push_back(Pair{std::forward<Awaitable>(awaitable), std::forward<Callback>(callback)});
-  }
+  using UnderlyingAwaiterResultExpectedType = typename AwaiterTraitsType::AwaiterResultExpectedType;
 
   struct ListAwaiter : public AwaiterBase<FiberSuspender> {
     mutable std::vector<std::unique_ptr<UnderlyingAwaiter>> _awaiters;
@@ -82,92 +62,102 @@ public:
       OnAwaitSuspend();
     }
 
-    std::vector<UnderlyingAwaiterResultOptionalType> await_resume() {
-      std::vector<UnderlyingAwaiterResultOptionalType> results;
+    std::vector<UnderlyingAwaiterResultExpectedType> await_resume() {
+      std::vector<UnderlyingAwaiterResultExpectedType> results;
       results.reserve(_awaiters.size());
       for (auto& awaiter : _awaiters) {
         if (awaiter->await_ready()) {
           if constexpr (std::is_void_v<AwaiterResultType>) {
             awaiter->await_resume();
-            results.push_back(true);
+            results.push_back({});
           } else {
             results.push_back(awaiter->await_resume());
           }
         } else {
-          if constexpr (std::is_void_v<AwaiterResultType>) {
-            results.push_back(false);
-          } else {
-            results.push_back(std::nullopt);
-          }
+          results.push_back(std::unexpected(typename AwaiterTraitsType::AwaiterNotReady{}));
         }
       }
       return results;
     }
   };
 
+  using Awaiter = ListAwaiter;
+  using AwaiterResultExpectedType = typename AwaiterTraits<ListAwaiter>::AwaiterResultExpectedType;
+
+  using CallbackResultType = decltype(([] -> decltype(auto) {
+    if constexpr (std::is_void_v<AwaiterResultType>) {
+      return std::type_identity<decltype(std::declval<CallbackStorage&>()())>{};
+    } else {
+      return std::type_identity<decltype(std::declval<CallbackStorage&>()(std::declval<AwaiterResultType>()))>{};
+    }
+  })())::type;
+
+  using CallbackReturn = typename CoroutineTraits<CallbackResultType>::CoroutineReturnTypeOrOriginalType;
+  using SingleResultType = std::expected<CallbackReturn, typename AwaiterTraitsType::AwaiterNotReady>;
+  using ResultType = std::vector<SingleResultType>;
+
+  explicit SelectPairList() = default;
+
+  void Add(Awaitable&& awaitable, Callback&& callback) {
+    _pairs.push_back(Pair{std::forward<Awaitable>(awaitable), std::forward<Callback>(callback)});
+  }
+
   ListAwaiter operator co_await() { return ListAwaiter(_pairs); }
 
   operator Awaiter() { return ListAwaiter(_pairs); }
 
-  Coroutine<ResultType> RunCallback(AwaiterResultOptionalType& results) {
+  Coroutine<ResultType> RunCallback(AwaiterResultExpectedType& results) {
     std::vector<SingleResultType> final_results;
     final_results.reserve(_pairs.size());
     for (size_t i = 0; i < _pairs.size(); ++i) {
-      UnderlyingAwaiterResultOptionalType res = results ? (*results)[i] : UnderlyingAwaiterResultOptionalType{};
+      UnderlyingAwaiterResultExpectedType res =
+          results.has_value() ? (*results)[i] : std::unexpected(typename AwaiterTraitsType::AwaiterNotReady{});
       final_results.push_back(co_await RunPairCallback(_pairs[i], std::move(res)));
     }
     co_return final_results;
   }
 
 private:
-  static Coroutine<SingleResultType> RunPairCallback(Pair& pair, UnderlyingAwaiterResultOptionalType result) {
+  static Coroutine<SingleResultType> RunPairCallback(Pair& pair, UnderlyingAwaiterResultExpectedType result) {
     auto& callback = pair.second;
-    if constexpr (std::is_same_v<std::decay_t<decltype(result)>, bool>) {
-      if (result) {
-        if constexpr (std::is_same_v<SingleResultType, bool>) {
+    if constexpr (std::is_void_v<AwaiterResultType>) {
+      if (result.has_value()) {
+        if constexpr (std::is_void_v<CallbackReturn>) {
           if constexpr (requires { typename decltype(callback())::CoroutineReturnType; }) {
             co_await callback();
           } else {
             callback();
           }
-          co_return true;
+          co_return SingleResultType{};
         } else {
           if constexpr (requires { typename decltype(callback())::CoroutineReturnType; }) {
-            co_return SingleResultType(std::in_place, co_await callback());
+            co_return co_await callback();
           } else {
-            co_return SingleResultType(std::in_place, callback());
+            co_return callback();
           }
         }
       } else {
-        if constexpr (std::is_same_v<SingleResultType, bool>) {
-          co_return false;
-        } else {
-          co_return std::nullopt;
-        }
+        co_return std::unexpected(typename AwaiterTraitsType::AwaiterNotReady{});
       }
     } else {
       if (result.has_value()) {
         auto&& val = std::move(*result);
-        if constexpr (std::is_same_v<SingleResultType, bool>) {
+        if constexpr (std::is_void_v<CallbackReturn>) {
           if constexpr (requires { typename decltype(callback(std::move(val)))::CoroutineReturnType; }) {
             co_await callback(std::move(val));
           } else {
             callback(std::move(val));
           }
-          co_return true;
+          co_return SingleResultType{};
         } else {
           if constexpr (requires { typename decltype(callback(std::move(val)))::CoroutineReturnType; }) {
-            co_return SingleResultType(std::in_place, co_await callback(std::move(val)));
+            co_return co_await callback(std::move(val));
           } else {
-            co_return SingleResultType(std::in_place, callback(std::move(val)));
+            co_return callback(std::move(val));
           }
         }
       } else {
-        if constexpr (std::is_same_v<SingleResultType, bool>) {
-          co_return false;
-        } else {
-          co_return std::nullopt;
-        }
+        co_return std::unexpected(typename AwaiterTraitsType::AwaiterNotReady{});
       }
     }
   }
