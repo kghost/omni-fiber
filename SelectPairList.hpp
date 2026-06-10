@@ -98,6 +98,8 @@ public:
 
   explicit SelectPairList() = default;
 
+  bool Empty() const { return _pairs.empty(); }
+
   void Add(Awaitable&& awaitable, Callback&& callback) {
     _pairs.push_back(Pair{std::forward<Awaitable>(awaitable), std::forward<Callback>(callback)});
   }
