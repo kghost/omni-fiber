@@ -65,7 +65,7 @@ foreach(suffix "" "-asan")
     Boost::thread
   )
 
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND NOT ANDROID)
     target_link_libraries(${target} PUBLIC stdc++exp)
   endif()
 

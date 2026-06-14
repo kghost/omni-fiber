@@ -7,6 +7,7 @@
 #include "Coroutine.hpp"
 #include "Event.hpp"
 #include "Pipe.hpp"
+#include "MoveOnlyFunction.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -55,7 +56,7 @@ public:
     }
   }
 
-  static Coroutine<bool> HandleRequest(std::expected<std::move_only_function<Coroutine<void>()>, PipeClosed>&& req) {
+  static Coroutine<bool> HandleRequest(std::expected<move_only_function<Coroutine<void>()>, PipeClosed>&& req) {
     if (req.has_value()) {
       co_await req.value()();
       co_return true;
@@ -65,7 +66,7 @@ public:
   }
 
 private:
-  Pipe<std::move_only_function<Coroutine<void>()>> _Pipe;
+  Pipe<move_only_function<Coroutine<void>()>> _Pipe;
 };
 
 } // namespace Fiber
