@@ -6,8 +6,11 @@
 #include <expected>
 #include <functional>
 #include <optional>
-#include <stacktrace>
 #include <type_traits>
+
+#if __has_include(<stacktrace>)
+#include <stacktrace>
+#endif
 
 #include "FiberPromise.hpp"
 
@@ -45,13 +48,19 @@ private:
     }
     void unhandled_exception(this Impl& self
 #ifndef NDEBUG
+#if __has_include(<stacktrace>)
                              ,
                              void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
 #endif
     ) {
       self._RetState = std::unexpected(std::current_exception());
 #ifndef NDEBUG
+#if __has_include(<stacktrace>)
       self.SetInstructionPointer(ip);
+#else
+      self.SetInstructionPointer(__builtin_return_address(0));
+#endif
       DebugOutputFiberCallStack(self.GetFiber(), self, self._RetState.value().error());
 #endif
     }
@@ -102,14 +111,20 @@ public:
   template <typename T>
   std::coroutine_handle<> await_suspend(std::coroutine_handle<T> caller
 #ifndef NDEBUG
+#if __has_include(<stacktrace>)
                                         ,
                                         void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
 #endif
                                             ) noexcept {
     promise_type& promise = _Callee.promise();
     promise._CallerPromise.emplace(caller.promise());
 #ifndef NDEBUG
+#if __has_include(<stacktrace>)
     caller.promise().SetInstructionPointer(ip);
+#else
+    caller.promise().SetInstructionPointer(__builtin_return_address(0));
+#endif
 #endif
     return _Callee;
   }

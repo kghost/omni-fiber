@@ -4,7 +4,9 @@
 #include <expected>
 #include <functional>
 #include <optional>
+#if __has_include(<stacktrace>)
 #include <stacktrace>
+#endif
 
 namespace Omni {
 namespace Fiber {
@@ -54,14 +56,20 @@ public:
   template <typename PromiseType>
   void DoAwaitSuspend(std::coroutine_handle<PromiseType> caller
 #ifndef NDEBUG
+#if __has_include(<stacktrace>)
                       ,
                       void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+#endif
 #endif
   ) {
     auto& promise = caller.promise();
     _OwnerFiber = promise.GetFiber();
 #ifndef NDEBUG
+#if __has_include(<stacktrace>)
     promise.SetInstructionPointer(ip);
+#else
+    promise.SetInstructionPointer(__builtin_return_address(0));
+#endif
     Suspender::SetSuspendedPromise(_OwnerFiber.value().get(), promise);
 #endif
     Suspender::DoSuspend(_OwnerFiber.value().get(), caller);

@@ -1,5 +1,19 @@
 enable_testing()
-find_package(GTest REQUIRED)
+
+if(BUILD_WITH_LIBCXX)
+  if(NOT TARGET gtest)
+    add_subdirectory("/usr/src/googletest" "${CMAKE_BINARY_DIR}/googletest-build" EXCLUDE_FROM_ALL)
+  endif()
+  if(NOT TARGET GTest::gtest)
+    add_library(GTest::gtest ALIAS gtest)
+  endif()
+  if(NOT TARGET GTest::gtest_main)
+    add_library(GTest::gtest_main ALIAS gtest_main)
+  endif()
+else()
+  find_package(GTest REQUIRED)
+endif()
+
 find_package(Boost REQUIRED COMPONENTS log thread)
 
 include(GoogleTest)
