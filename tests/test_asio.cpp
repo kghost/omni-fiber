@@ -22,14 +22,14 @@ void RunEventLoop(boost::asio::io_context& io) {
 }
 
 template <typename CompletionToken>
-auto AsyncCustomOp(boost::asio::io_context& io, int x, const std::string& y, CompletionToken&& token) {
+auto AsyncCustomOp(boost::asio::any_io_executor executor, int x, const std::string& y, CompletionToken&& token) {
   return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, int, std::string)>(
-      [](auto&& handler, boost::asio::io_context& io, int x, std::string y) {
-        boost::asio::post(io, [handler = std::move(handler), x, y = std::move(y)]() mutable {
+      [](auto&& handler, boost::asio::any_io_executor executor, int x, std::string y) {
+        boost::asio::post(executor, [handler = std::move(handler), x, y = std::move(y)]() mutable {
           handler(boost::system::error_code{}, x * 2, y + "_suffix");
         });
       },
-      token, std::ref(io), x, y);
+      token, std::ref(executor), x, y);
 }
 
 } // namespace
@@ -37,7 +37,7 @@ auto AsyncCustomOp(boost::asio::io_context& io, int x, const std::string& y, Com
 // Test Case 1: Basic Timer Wait
 TEST(AsioTest, BasicTimerWait) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool executed = false;
@@ -64,7 +64,7 @@ TEST(AsioTest, BasicTimerWait) {
 // Test Case 2: Timer Cancellation
 TEST(AsioTest, TimerCancellation) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool childExecuted = false;
@@ -100,7 +100,7 @@ TEST(AsioTest, TimerCancellation) {
 // Test Case: Cancellation slot Integration
 TEST(AsioTest, CancellationSlotIntegration) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool childExecuted = false;
@@ -137,13 +137,13 @@ TEST(AsioTest, CancellationSlotIntegration) {
 // Test Case 3: Multiple Results Integration
 TEST(AsioTest, MultiArgumentCustomAsyncOperation) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    auto [ec, val, str] = co_await AsyncCustomOp(io, 21, "hello", AsioUseFiber);
+    auto [ec, val, str] = co_await AsyncCustomOp(io.get_executor(), 21, "hello", AsioUseFiber);
 
     EXPECT_FALSE(ec);
     EXPECT_EQ(val, 42);
@@ -159,7 +159,7 @@ TEST(AsioTest, MultiArgumentCustomAsyncOperation) {
 // Test Case 4: TCP Socket Ping-Pong over multiple rounds
 TEST(AsioTest, TcpSocketMultipleRounds) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool serverDone = false;

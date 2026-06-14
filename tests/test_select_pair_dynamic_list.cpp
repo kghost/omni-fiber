@@ -29,7 +29,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 // 1. Heterogeneous: mixed event types and callbacks
 TEST(SelectPairDynamicListTest, MixedAwaitables) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> eventVoid;
@@ -81,7 +81,7 @@ TEST(SelectPairDynamicListTest, MixedAwaitables) {
 // 2. Heterogeneous: Coroutine callbacks
 TEST(SelectPairDynamicListTest, CoroutineCallbacks) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> eventVoid;
@@ -131,7 +131,7 @@ TEST(SelectPairDynamicListTest, CoroutineCallbacks) {
 // 3. Heterogeneous: RAII cancellation of pending event/pipe registrations
 TEST(SelectPairDynamicListTest, RaiiCancellation) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> eventVoid;
@@ -167,7 +167,7 @@ TEST(SelectPairDynamicListTest, RaiiCancellation) {
 // 4. Heterogeneous: SelectPairDynamicList used directly inside Select mixed with another SelectPair
 TEST(SelectPairDynamicListTest, UsedDirectlyInsideSelectMixed) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;

@@ -41,7 +41,7 @@ Coroutine<void> NestedLevel1(Fiber& expectedFiber, bool& executed) {
 // Test Case 1: Retrieve Fiber in Root Fiber
 TEST(GetCurrentFiberTest, RetrieveRootFiber) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool executed = false;
@@ -62,7 +62,7 @@ TEST(GetCurrentFiberTest, RetrieveRootFiber) {
 // Test Case 2: Retrieve Fiber through deep nested coroutine calls
 TEST(GetCurrentFiberTest, RetrieveInNestedCoroutines) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool executed = false;
@@ -80,7 +80,7 @@ TEST(GetCurrentFiberTest, RetrieveInNestedCoroutines) {
 // Test Case 3: Multiple sibling fibers spawn and retrieve their own unique references
 TEST(GetCurrentFiberTest, SiblingFibers) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool child1Executed = false;

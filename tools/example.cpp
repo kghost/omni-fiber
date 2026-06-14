@@ -13,7 +13,7 @@ using namespace Omni::Fiber;
 
 // A cooperative worker fiber that processes tasks from a shared queue.
 // It uses a "poison pill" pattern (task == -1) to know when to shut down.
-Coroutine<void> WorkerFiber(int id, boost::asio::io_context& io, std::shared_ptr<EventQueue<int>> taskQueue) {
+Coroutine<void> WorkerFiber(int id, boost::asio::any_io_executor executor, std::shared_ptr<EventQueue<int>> taskQueue) {
   std::cout << "[Worker " << id << "] Fiber started. Awaiting tasks..." << std::endl;
 
   while (true) {
@@ -39,7 +39,7 @@ Coroutine<void> WorkerFiber(int id, boost::asio::io_context& io, std::shared_ptr
     // Simulate some cooperative task processing time using Boost.Asio timers.
     // This yields execution of the current fiber back to the event loop,
     // allowing other fibers to run on the same thread without blocking!
-    boost::asio::steady_timer timer(io, std::chrono::milliseconds(100));
+    boost::asio::steady_timer timer(executor, std::chrono::milliseconds(100));
     co_await timer.async_wait(AsioUseFiber);
   }
 
@@ -48,12 +48,13 @@ Coroutine<void> WorkerFiber(int id, boost::asio::io_context& io, std::shared_ptr
 }
 
 // A cooperative producer fiber that generates tasks at intervals
-Coroutine<void> ProducerFiber(boost::asio::io_context& io, std::shared_ptr<EventQueue<int>> taskQueue, int numWorkers) {
+Coroutine<void> ProducerFiber(boost::asio::any_io_executor executor, std::shared_ptr<EventQueue<int>> taskQueue,
+                              int numWorkers) {
   std::cout << "[Producer] Fiber started. Generating tasks..." << std::endl;
 
   for (int i = 1; i <= 5; ++i) {
     // Cooperative sleep between generating tasks
-    boost::asio::steady_timer timer(io, std::chrono::milliseconds(150));
+    boost::asio::steady_timer timer(executor, std::chrono::milliseconds(150));
     co_await timer.async_wait(AsioUseFiber);
 
     std::cout << "[Producer] Pushing task: " << i * 100 << std::endl;
@@ -75,7 +76,7 @@ int main() {
   boost::asio::io_context io;
 
   // Create the OmniFiber Asio Executor and Manager
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   // Shared communication primitives
@@ -88,12 +89,13 @@ int main() {
     std::cout << "[Root] Spawning fibers..." << std::endl;
 
     // Spawn three worker fibers
-    auto worker1 = current.Spawn("worker1", [&]() { return WorkerFiber(1, io, taskQueue); });
-    auto worker2 = current.Spawn("worker2", [&]() { return WorkerFiber(2, io, taskQueue); });
-    auto worker3 = current.Spawn("worker3", [&]() { return WorkerFiber(3, io, taskQueue); });
+    auto worker1 = current.Spawn("worker1", [&]() { return WorkerFiber(1, io.get_executor(), taskQueue); });
+    auto worker2 = current.Spawn("worker2", [&]() { return WorkerFiber(2, io.get_executor(), taskQueue); });
+    auto worker3 = current.Spawn("worker3", [&]() { return WorkerFiber(3, io.get_executor(), taskQueue); });
 
     // Spawn one producer fiber
-    auto producer = current.Spawn("producer", [&]() { return ProducerFiber(io, taskQueue, numWorkers); });
+    auto producer =
+        current.Spawn("producer", [&]() { return ProducerFiber(io.get_executor(), taskQueue, numWorkers); });
 
     // Wait cooperatively for the producer to finish generating all tasks
     co_await current.Join(producer);

@@ -18,17 +18,17 @@ inline constexpr const AsioUseFiberType AsioUseFiber;
 
 class AsioExecutor : public Executor {
 public:
-  explicit AsioExecutor(boost::asio::io_context& io) : Executor(), _Io(io) {}
+  explicit AsioExecutor(boost::asio::any_io_executor executor) : Executor(), _Executor(executor) {}
 
   AsioExecutor(AsioExecutor&) = delete;
   AsioExecutor& operator=(AsioExecutor&) = delete;
   AsioExecutor(AsioExecutor&&) = delete;
   AsioExecutor& operator=(AsioExecutor&&) = delete;
 
-  void Post(Manager& manager) override { boost::asio::post(_Io, manager.GetRunner()); }
+  void Post(Manager& manager) override { boost::asio::post(_Executor, manager.GetRunner()); }
 
 private:
-  boost::asio::io_context& _Io;
+  boost::asio::any_io_executor _Executor;
 };
 
 template <typename... Results> class AsioResult {

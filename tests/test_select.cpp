@@ -30,7 +30,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 // 1. Test case: Single event completing amongst multiple
 TEST(SelectTest, SingleEventCompletes) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -67,7 +67,7 @@ TEST(SelectTest, SingleEventCompletes) {
 // 2. Test case: Multiple simultaneous events completed
 TEST(SelectTest, MultipleSimultaneousEvents) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -107,7 +107,7 @@ TEST(SelectTest, MultipleSimultaneousEvents) {
 // 3. Test case: Early-fired events (events fired before Select is co_awaited)
 TEST(SelectTest, EarlyFiredEvents) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -135,7 +135,7 @@ TEST(SelectTest, EarlyFiredEvents) {
 // 4. Test case: Heterogeneous event types and callbacks with/without arguments
 TEST(SelectTest, HeterogeneousCallbackArguments) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<int> event1;
@@ -167,7 +167,7 @@ TEST(SelectTest, HeterogeneousCallbackArguments) {
 // 5. Test case: Clean RAII cancellation of unfinished awaitables
 TEST(SelectTest, CleanRaiiCancellation) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -201,7 +201,7 @@ TEST(SelectTest, CleanRaiiCancellation) {
 // 6. Test case: Pipe consumer select integration
 TEST(SelectTest, PipeConsumerSelect) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -236,7 +236,7 @@ TEST(SelectTest, PipeConsumerSelect) {
 // 7. Test case: Selecting on a temporary (rvalue) awaitable
 TEST(SelectTest, PipeConsumerSelectTemporary) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -271,7 +271,7 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
 // 8. Test case: Coroutine callbacks with single event
 TEST(SelectTest, CoroutineCallbacks) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -325,7 +325,7 @@ TEST(SelectTest, CoroutineCallbacks) {
 // 9. Test case: Coroutine callbacks executed sequentially
 TEST(SelectTest, CoroutineCallbacksSimultaneous) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -375,7 +375,7 @@ TEST(SelectTest, CoroutineCallbacksSimultaneous) {
 // 10. Test case: Select fiber event and asio timer event (timer completing first)
 TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -402,7 +402,7 @@ TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
 // 11. Test case: Select fiber event and asio timer event (fiber event completing first)
 TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -444,7 +444,7 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
 // 12. Test case: Select fiber event and asio timer event (fiber event already early fired)
 TEST(SelectTest, FiberEventAndAsioTimerFiberEventEarlyFired) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -474,7 +474,7 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventEarlyFired) {
 // 13. Test case: Select pipe consumer and asio timer (pipe completing first)
 TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -520,7 +520,7 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
 // 14. Test case: Select pipe consumer and asio timer (timer completing first)
 TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -554,7 +554,7 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
 // 15. Test case: Select returns a tuple of callback results
 TEST(SelectTest, SelectReturnTupleResults) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -611,7 +611,7 @@ TEST(SelectTest, SelectReturnTupleResults) {
 // 16. Test case: Select trigger same event in callback
 TEST(SelectTest, SelectTriggerEventInCallback) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;

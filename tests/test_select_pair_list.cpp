@@ -28,7 +28,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 // 1. Homogeneous: dynamic size, single event completes
 TEST(SelectPairListTest, SingleEventCompletes) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -76,7 +76,7 @@ TEST(SelectPairListTest, SingleEventCompletes) {
 // 2. Homogeneous: multiple events complete simultaneously
 TEST(SelectPairListTest, MultipleSimultaneousEvents) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::shared_ptr<Event<void>>> events;
@@ -116,7 +116,7 @@ TEST(SelectPairListTest, MultipleSimultaneousEvents) {
 // 3. Homogeneous: RAII cancellation of pending events
 TEST(SelectPairListTest, RaiiCancellation) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::shared_ptr<Event<void>>> events;
@@ -154,7 +154,7 @@ TEST(SelectPairListTest, RaiiCancellation) {
 // 4. Homogeneous: callbacks returning non-void values
 TEST(SelectPairListTest, CallbackReturnValues) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::shared_ptr<Event<int>>> events;
@@ -196,7 +196,7 @@ TEST(SelectPairListTest, CallbackReturnValues) {
 // 5. Homogeneous: SelectPairList used inside Select
 TEST(SelectPairListTest, UsedInsideSelect) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;
@@ -247,7 +247,7 @@ TEST(SelectPairListTest, UsedInsideSelect) {
 // 6. Homogeneous: SelectPairList used directly inside Select mixed with another SelectPair
 TEST(SelectPairListTest, UsedDirectlyInsideSelectMixed) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event1;

@@ -41,7 +41,7 @@ Coroutine<void> Level1Exception() {
 // 1. Test that child fiber exception propagates to parent fiber.Join
 TEST(FiberExceptionTest, ChildExceptionPropagatesToJoin) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool exceptionCaught = false;
@@ -80,7 +80,7 @@ TEST(FiberExceptionTest, ChildExceptionPropagatesToJoin) {
 // 2. Test that child fiber exception propagates to parent fiber.WaitFor
 TEST(FiberExceptionTest, ChildExceptionPropagatesToWaitFor) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool exceptionCaught = false;
@@ -119,7 +119,7 @@ TEST(FiberExceptionTest, ChildExceptionPropagatesToWaitFor) {
 // 3. Test that root fiber exception propagates to Manager->Run()
 TEST(FiberExceptionTest, RootExceptionPropagatesToManagerRun) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -150,7 +150,7 @@ TEST(FiberExceptionTest, RootExceptionPropagatesToManagerRun) {
 // 4. Test exception propagation through deep coroutine call stack of root fiber directly to Manager::Run
 TEST(FiberExceptionTest, DeepCoroutineStackException) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -181,7 +181,7 @@ TEST(FiberExceptionTest, DeepCoroutineStackException) {
 // 5. Test multi-level nested exception propagation across grandchild, child, and root fibers
 TEST(FiberExceptionTest, NestedExceptionPropagation) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -244,7 +244,7 @@ TEST(FiberExceptionTest, NestedExceptionPropagation) {
 // 6. Test that caught fiber exceptions do not propagate to the manager
 TEST(FiberExceptionTest, CaughtExceptionDoesNotPropagate) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool exceptionCaught = false;

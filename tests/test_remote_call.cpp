@@ -30,7 +30,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 // 1. Test case: Basic Value RPC (returns a value)
 TEST(RemoteCallTest, BasicValueCall) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   RemoteCall rc;
@@ -66,7 +66,7 @@ TEST(RemoteCallTest, BasicValueCall) {
 // 2. Test case: Void Reply RPC (returns void)
 TEST(RemoteCallTest, VoidReplyCall) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   RemoteCall rc;
@@ -104,7 +104,7 @@ TEST(RemoteCallTest, VoidReplyCall) {
 // 3. Test case: Move-Only Request/Reply
 TEST(RemoteCallTest, MoveOnlyTypes) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   RemoteCall rc;
@@ -145,7 +145,7 @@ TEST(RemoteCallTest, MoveOnlyTypes) {
 // 4. Test case: Multiple Sequential Calls
 TEST(RemoteCallTest, SequentialCalls) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   RemoteCall rc;
@@ -184,7 +184,7 @@ TEST(RemoteCallTest, SequentialCalls) {
 // 5. Test case: Multiple Concurrent Calls
 TEST(RemoteCallTest, ConcurrentCalls) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   RemoteCall rc;
@@ -227,7 +227,7 @@ TEST(RemoteCallTest, ConcurrentCalls) {
 // 6. Test case: Server Shutdown
 TEST(RemoteCallTest, ServerShutdown) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   RemoteCall rc;
@@ -259,7 +259,7 @@ TEST(RemoteCallTest, ServerShutdown) {
 // 7. Test case: Select Integration
 TEST(RemoteCallTest, SelectIntegration) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   RemoteCall rc;

@@ -26,7 +26,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 // 1. Test case: Initial state of a newly created Pipe
 TEST(PipeTest, InitialState) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -42,7 +42,7 @@ TEST(PipeTest, InitialState) {
 // 2. Test case: Basic transmission of data without suspending (direct write & read)
 TEST(PipeTest, BasicPutAndGet) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -83,7 +83,7 @@ TEST(PipeTest, BasicPutAndGet) {
 // 3. Test case: Basic close of pipe
 TEST(PipeTest, BasicClose) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -118,7 +118,7 @@ TEST(PipeTest, BasicClose) {
 // 4. Test case: Producer suspensions due to full buffer
 TEST(PipeTest, ProducerSuspension) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -180,7 +180,7 @@ TEST(PipeTest, ProducerSuspension) {
 // 5. Test case: Consumer suspensions due to empty buffer
 TEST(PipeTest, ConsumerSuspension) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<int> pipe;
@@ -241,7 +241,7 @@ TEST(PipeTest, ConsumerSuspension) {
 // 7. Test case: Pipe supports move-only objects
 TEST(PipeTest, MoveOnlyObject) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Pipe<std::unique_ptr<int>> pipe;

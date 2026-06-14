@@ -113,7 +113,7 @@ Coroutine<void> Level1Exception(bool& caught) {
 // Test Case 1: 3-Level Void Call Flow
 TEST(CoroutineTest, ThreeLevelsVoid) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::string> sequence;
@@ -141,7 +141,7 @@ TEST(CoroutineTest, ThreeLevelsVoid) {
 // Test Case 2: 3-Level Value Propagation
 TEST(CoroutineTest, ThreeLevelsWithValue) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   int finalResult = 0;
@@ -162,7 +162,7 @@ TEST(CoroutineTest, ThreeLevelsWithValue) {
 // Test Case 3: 3-Level Cooperative Suspension & Resumption
 TEST(CoroutineTest, ThreeLevelsWithCooperativeSuspend) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event;
@@ -204,7 +204,7 @@ TEST(CoroutineTest, ThreeLevelsWithCooperativeSuspend) {
 // Test Case 4: Deep Nested Recursive Execution (Fibonacci)
 TEST(CoroutineTest, DeepNestedRecursiveFibonacci) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   int result = 0;
@@ -228,7 +228,7 @@ TEST(CoroutineTest, DeepNestedRecursiveFibonacci) {
 // Test Case 5: 3-Level Exception Propagation
 TEST(CoroutineTest, NestedExceptionPropagation) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool caught = false;

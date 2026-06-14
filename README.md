@@ -173,7 +173,7 @@ Below is a complete example demonstrating how to initialize the `Manager`, bind 
 
 using namespace Omni::Fiber;
 
-Coroutine<void> WorkerFiber(int id, std::shared_ptr<Event<void>> startSignal, boost::asio::io_context& io) {
+Coroutine<void> WorkerFiber(int id, std::shared_ptr<Event<void>> startSignal, boost::asio::any_io_executor executor) {
     std::cout << "[Worker " << id << "] Waiting for start signal..." << std::endl;
     co_await *startSignal; // Yield until signaled
 
@@ -188,7 +188,7 @@ Coroutine<void> WorkerFiber(int id, std::shared_ptr<Event<void>> startSignal, bo
 
 int main() {
     boost::asio::io_context io;
-    AsioExecutor executor(io);
+    AsioExecutor executor(io.get_executor());
     Manager manager(executor);
 
     auto startSignal = std::make_shared<Event<void>>();

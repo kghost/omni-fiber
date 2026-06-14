@@ -32,7 +32,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 // 1. Test Spawning and Basic Fiber Scheduling
 TEST(FiberTest, BasicSpawnAndSchedule) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   bool rootExecuted = false;
@@ -60,7 +60,7 @@ TEST(FiberTest, BasicSpawnAndSchedule) {
 // 2. Test Fiber Joining
 TEST(FiberTest, FiberJoin) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::string> order;
@@ -95,7 +95,7 @@ Coroutine<int> AsyncAdd(int a, int b) { co_return a + b; }
 
 TEST(FiberTest, CoroutineReturnValue) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   int result = 0;
@@ -113,7 +113,7 @@ TEST(FiberTest, CoroutineReturnValue) {
 // 4. Test Event cooperative synchronization
 TEST(FiberTest, CooperativeEvent) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> startEvent;
@@ -163,7 +163,7 @@ TEST(FiberTest, CooperativeEvent) {
 // 5. Test EventQueue cooperative communication
 TEST(FiberTest, CooperativeEventQueue) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   EventQueue<int> queue;
@@ -205,7 +205,7 @@ TEST(FiberTest, CooperativeEventQueue) {
 // 7. Test WaitFor basic functionality (first to exit)
 TEST(FiberTest, WaitForBasic) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::shared_ptr<Fiber>> finishedOrder;
@@ -252,7 +252,7 @@ TEST(FiberTest, WaitForBasic) {
 // 8. Test WaitFor when child has already finished
 TEST(FiberTest, WaitForAlreadyFinished) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::string finishedName;
@@ -285,7 +285,7 @@ TEST(FiberTest, WaitForAlreadyFinished) {
 // 9. Test WaitFor with multiple children already finished
 TEST(FiberTest, WaitForMultipleAlreadyFinished) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::string> finishedNames;
@@ -324,7 +324,7 @@ TEST(FiberTest, WaitForMultipleAlreadyFinished) {
 // 10. Test that Join does not discard finish signals of other children
 TEST(FiberTest, JoinInterleavedSignalLossBug) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::string waitedName;
@@ -390,7 +390,7 @@ Coroutine<void> CallstackTrace_A(Event<void>& event) {
 
 TEST(FiberTest, CallstackTrace) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event;
@@ -454,7 +454,7 @@ TEST(FiberTest, CallstackTrace) {
 // Test Fiber Yielding and Low-Priority Scheduling Queue
 TEST(FiberTest, FiberYieldLowPriority) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   std::vector<std::string> order;

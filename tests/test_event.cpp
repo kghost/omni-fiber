@@ -31,7 +31,7 @@ TEST(EventTest, InitialState) {
 // 2. Test case: Early Fire (Fire called before co_await)
 TEST(EventTest, EarlyFire) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event;
@@ -54,7 +54,7 @@ TEST(EventTest, EarlyFire) {
 // 3. Test case: Single awaiter waiting on Event being fired cooperatively
 TEST(EventTest, SingleAwaiter) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event;
@@ -94,7 +94,7 @@ TEST(EventTest, SingleAwaiter) {
 // 4. Test case: Multiple awaiters waiting on a single Event cooperatively
 TEST(EventTest, MultipleAwaiters) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event;
@@ -148,7 +148,7 @@ TEST(EventTest, MultipleAwaiters) {
 // 5. Test case: Multiple awaiters co_awaiting an already fired Event
 TEST(EventTest, MultipleAwaitersEarlyFire) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event;
@@ -186,7 +186,7 @@ TEST(EventTest, MultipleAwaitersEarlyFire) {
 // 6. Test case: Call Fire multiple times on the same Event
 TEST(EventTest, MultipleFires) {
   boost::asio::io_context io;
-  AsioExecutor executor(io);
+  AsioExecutor executor(io.get_executor());
   Manager manager(executor);
 
   Event<void> event;
