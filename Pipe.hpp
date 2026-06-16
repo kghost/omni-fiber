@@ -61,7 +61,11 @@ public:
       if (std::holds_alternative<Closed>(_Pipe._Data)) {
         co_return std::unexpected<PipeClosed>{PipeClosed{}};
       }
-      _Pipe._Data = std::forward<Value>(value);
+      if constexpr (std::is_same_v<Value, Closed>) {
+        _Pipe._Data.template emplace<Closed>();
+      } else {
+        _Pipe._Data.template emplace<DataType>(std::forward<Value>(value));
+      }
       SharedAwaiter::Fire(_Pipe._AwaitReadContext);
       co_return std::expected<void, PipeClosed>{};
     }
