@@ -49,6 +49,11 @@ Represents an independent cooperative unit of execution.
   - `co_await parent->WaitAll()`: Blocks until all active and completed child fibers are fully joined.
   - `co_await parent->Wait(until_callback)`: Yields the fiber until the boolean callback condition returns true.
 
+> [!IMPORTANT]
+> **FIBER LIFECYCLE & JOINING RULES**:
+> 1. **Parent-Child Enforcements**: `parent->Join(child)` can only be called from the **exact parent fiber** that spawned the child. Attempting to join a child fiber from a different fiber family (e.g., a sibling or grandparent fiber) will result in an assertion failure: `Assertion _Children.contains(child) || _FinishedChildren.contains(child) failed`.
+> 2. **Active Children Constraints**: A parent fiber must not exit/finish execution while it still has active or unjoined child fibers. Always ensure that parent fibers invoke `co_await parent->WaitAll()` (or join all children explicitly) before returning. Failure to do so will result in: `Assertion _Children.empty() && _FinishedChildren.empty() failed`.
+
 ### 3. Manager (`Manager`)
 The fiber scheduler. It runs a queue of "ready" fibers and schedules them onto the underlying executor.
 - **Initialization**:
