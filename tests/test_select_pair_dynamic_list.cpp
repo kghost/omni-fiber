@@ -104,7 +104,7 @@ TEST(SelectPairDynamicListTest, CoroutineCallbacks) {
     });
     list.Add(eventInt, [&](int val) -> Coroutine<void> {
       sequence.push_back("int_coro_callback_start");
-      boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+      boost::asio::steady_timer timer(io, std::chrono::milliseconds(20));
       co_await timer.async_wait(AsioUseFiber);
       sequence.push_back("int_coro_callback_end_" + std::to_string(val));
       co_return;

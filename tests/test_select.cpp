@@ -296,7 +296,7 @@ TEST(SelectTest, CoroutineCallbacks) {
                                [&]() -> Coroutine<void> {
                                  sequence.push_back("coro_callback1_start");
                                  done_event1.Fire();
-                                 boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+                                 boost::asio::steady_timer timer(io, std::chrono::milliseconds(20));
                                  co_await timer.async_wait(AsioUseFiber);
                                  sequence.push_back("coro_callback1_end");
                                  co_return;
@@ -346,7 +346,7 @@ TEST(SelectTest, CoroutineCallbacksSimultaneous) {
     co_await Select(SelectPair(event1,
                                [&]() -> Coroutine<void> {
                                  sequence.push_back("coro_callback1_start");
-                                 boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+                                 boost::asio::steady_timer timer(io, std::chrono::milliseconds(20));
                                  co_await timer.async_wait(AsioUseFiber);
                                  sequence.push_back("coro_callback1_end");
                                  co_return;
@@ -379,7 +379,7 @@ TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
   Manager manager(executor);
 
   Event<void> event1;
-  boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+  boost::asio::steady_timer timer(io, std::chrono::milliseconds(20));
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
@@ -413,7 +413,7 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
-      boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(50));
+      boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(20));
       co_await waitTimer.async_wait(AsioUseFiber);
       sequence.push_back("fire_event");
       event1.Fire();
@@ -485,7 +485,7 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
     Fiber& current = co_await GetCurrentFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
-      boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(50));
+      boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(20));
       co_await waitTimer.async_wait(AsioUseFiber);
       co_await pipe.GetProducer().Put(300);
       co_return;
@@ -525,7 +525,7 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
 
   Pipe<int> pipe;
   auto consumer = pipe.GetConsumer();
-  boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+  boost::asio::steady_timer timer(io, std::chrono::milliseconds(20));
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {

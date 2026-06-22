@@ -43,7 +43,7 @@ TEST(AsioTest, BasicTimerWait) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+    boost::asio::steady_timer timer(io, std::chrono::milliseconds(20));
     auto startTime = std::chrono::steady_clock::now();
 
     auto [ec] = co_await timer.async_wait(AsioUseFiber);
@@ -52,7 +52,7 @@ TEST(AsioTest, BasicTimerWait) {
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
     EXPECT_FALSE(ec);
-    EXPECT_GE(elapsed, 45); // Should sleep for at least ~50ms
+    EXPECT_GE(elapsed, 20); // Should sleep for at least ~20ms
     executed = true;
     co_return;
   });
