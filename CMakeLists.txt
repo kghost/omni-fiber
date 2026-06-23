@@ -84,7 +84,7 @@ foreach(suffix "" "-asan")
   if(WIN32)
     target_compile_options(${target} PRIVATE /W3 /Zc:preprocessor /Od)
   else()
-    target_compile_options(${target} PRIVATE -Wall -Wextra -fvisibility=hidden)
+    target_compile_options(${target} PRIVATE -Wall -fvisibility=hidden)
   endif()
 
   if(suffix STREQUAL "-asan")
