@@ -9,12 +9,12 @@
 #include "Coroutine.hpp"
 #include "Event.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
+#include "OmniYield.hpp"
 #include "Pipe.hpp"
 #include "Select.hpp"
 #include "SelectPair.hpp"
-#include "Yield.hpp"
 
 using namespace Omni::Fiber;
 
@@ -38,7 +38,7 @@ TEST(SelectTest, SingleEventCompletes) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       sequence.push_back("fire1");
@@ -75,7 +75,7 @@ TEST(SelectTest, MultipleSimultaneousEvents) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       sequence.push_back("fire_both");
@@ -143,7 +143,7 @@ TEST(SelectTest, HeterogeneousCallbackArguments) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       event1.Fire(42);
@@ -175,7 +175,7 @@ TEST(SelectTest, CleanRaiiCancellation) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier1 = current.Spawn("notifier1", [&]() -> Coroutine<void> {
       sequence.push_back("fire1");
@@ -209,7 +209,7 @@ TEST(SelectTest, PipeConsumerSelect) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       co_await pipe.GetProducer().Put(100);
@@ -244,7 +244,7 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       co_await pipe.GetProducer().Put(200);
@@ -280,7 +280,7 @@ TEST(SelectTest, CoroutineCallbacks) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       sequence.push_back("fire1");
@@ -333,7 +333,7 @@ TEST(SelectTest, CoroutineCallbacksSimultaneous) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       sequence.push_back("fire_both");
@@ -385,8 +385,10 @@ TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("select_start");
     co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
-                    SelectPair(timer.async_wait(AsioUseFiber),
-                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
+                    SelectPair(timer.async_wait(AsioUseFiber), AsioApply([&](auto ec) {
+                                 EXPECT_FALSE(ec);
+                                 sequence.push_back("callback_timer triggered");
+                               })));
     sequence.push_back("select_done");
     co_return;
   });
@@ -395,7 +397,7 @@ TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
 
   ASSERT_EQ(sequence.size(), 3);
   EXPECT_EQ(sequence[0], "select_start");
-  EXPECT_EQ(sequence[1], "callback_timer_Success");
+  EXPECT_EQ(sequence[1], "callback_timer triggered");
   EXPECT_EQ(sequence[2], "select_done");
 }
 
@@ -410,7 +412,7 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(20));
@@ -482,7 +484,7 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       boost::asio::steady_timer waitTimer(io, std::chrono::milliseconds(20));
@@ -536,8 +538,10 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
                                    sequence.push_back("callback_pipe_" + std::to_string(result.value()));
                                  }
                                }),
-                    SelectPair(timer.async_wait(AsioUseFiber),
-                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
+                    SelectPair(timer.async_wait(AsioUseFiber), AsioApply([&](auto ec) {
+                                 EXPECT_FALSE(ec);
+                                 sequence.push_back("callback_timer triggered");
+                               })));
     sequence.push_back("select_done");
     co_await pipe.GetProducer().Close();
     co_return;
@@ -547,7 +551,7 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
 
   ASSERT_EQ(sequence.size(), 3);
   EXPECT_EQ(sequence[0], "select_start");
-  EXPECT_EQ(sequence[1], "callback_timer_Success");
+  EXPECT_EQ(sequence[1], "callback_timer triggered");
   EXPECT_EQ(sequence[2], "select_done");
 }
 
@@ -567,7 +571,7 @@ TEST(SelectTest, SelectReturnTupleResults) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       event1.Fire();
@@ -620,7 +624,7 @@ TEST(SelectTest, SelectTriggerEventInCallback) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto selector = current.Spawn("selector", [&]() -> Coroutine<void> {
       auto results =
@@ -635,7 +639,7 @@ TEST(SelectTest, SelectTriggerEventInCallback) {
       EXPECT_FALSE(std::get<1>(results).has_value());
     });
 
-    co_await Yield();
+    co_await OmniYield();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       event1.Fire();

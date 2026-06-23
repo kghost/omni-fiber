@@ -49,15 +49,15 @@ Standard C++ coroutines require a return type acting as the "coroutine interface
   - `unhandled_exception()` catches exceptions escaping from the coroutine body, stores them in the internal `std::expected` state, and dumps debug stack traces in non-production builds (`#ifndef NDEBUG`).
 - The lifecycle of the underlying coroutine state is bound to the `Coroutine` object. The destructor of `Coroutine` destroys the handle (`_Callee.destroy()`) and asserts that the coroutine is fully finished (`assert(_Callee.promise().IsFinished())`), preventing resource leaks and unfinished execution chains.
 
-### Dynamic Stack-Based Fiber Retrieval (`GetCurrentFiber`)
+### Dynamic Stack-Based Fiber Retrieval (`GetCurrentOmniFiber`)
 
 To retrieve the active `Fiber` reference from nested coroutine frames without using any global or thread-local variables, OmniFiber implements a dynamic stack-based traversal:
 
 1. **`FiberPromise` Interface**: Defines the virtual method `virtual Fiber& GetFiber() = 0;`.
 2. **Root Promise**: `Fiber::FiberFrame::Promise` (the root frame of any Fiber) overrides `GetFiber()` to directly return the reference to the owning `Fiber`.
 3. **Coroutine Promise Delegation**: The intermediate `Coroutine` promise `PromiseBase` overrides `GetFiber()` to recursively delegate up the chain using `_CallerPromise.value().get().GetFiber()`.
-4. **Symmetric Traversal Awaiter (`GetCurrentFiber`)**:
-   When `co_await GetCurrentFiber()` is invoked, the compiler passes `std::coroutine_handle<PromiseType> caller` to the awaiter's `await_suspend()`. The awaiter extracts `caller.promise().GetFiber()`, caches it in a private pointer, and returns `false` to prevent suspension. `await_resume()` then returns the cached `Fiber&` without yielding.
+4. **Symmetric Traversal Awaiter (`GetCurrentOmniFiber`)**:
+   When `co_await GetCurrentOmniFiber()` is invoked, the compiler passes `std::coroutine_handle<PromiseType> caller` to the awaiter's `await_suspend()`. The awaiter extracts `caller.promise().GetFiber()`, caches it in a private pointer, and returns `false` to prevent suspension. `await_resume()` then returns the cached `Fiber&` without yielding.
 
 ---
 
@@ -201,6 +201,11 @@ A cooperative I/O multiplexer (similar to `select` / `poll`) that awaits multipl
 - Suspends the active fiber until at least one of the awaitables becomes ready.
 - Once resumed, it executes the callbacks associated with all ready awaitables, passing their yielded results (if any) directly as arguments.
 - It supports clean RAII cancellation; when the `SelectAwaiter` is destroyed, any incomplete awaitables are safely de-registered.
+
+#### MSVC / Windows Compatibility (`Tuple`)
+Because awaiters in OmniFiber inherit from `AwaiterBase`, they delete both copy and move constructors to prevent dangling references in suspension queues. 
+MSVC's standard library `std::tuple` checks `std::is_constructible_v` on its constructor overloads. Since `std::is_constructible_v` uses `std::declval` (producing an xvalue instead of a prvalue), it fails to recognize that non-movable types can be constructed via C++17 guaranteed copy elision, disabling the constructor and failing compilation.
+To work around this, `SelectAwaiter` uses a custom aggregate `Tuple` to store the awaiters. Because `Tuple` has no user-defined constructors, it bypasses `std::tuple`'s SFINAE checks. Using brace-initialization on the aggregate directly constructs the awaiters in-place via guaranteed copy elision.
 
 ---
 

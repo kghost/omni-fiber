@@ -9,7 +9,7 @@
 #include "Asio.hpp"
 #include "Coroutine.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 
 using namespace Omni::Fiber;
@@ -71,7 +71,7 @@ TEST(AsioTest, TimerCancellation) {
   bool interrupterExecuted = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
     auto timer = std::make_shared<boost::asio::steady_timer>(io, std::chrono::seconds(10));
 
     auto child = current.Spawn("child", [timer, &childExecuted]() -> Coroutine<void> {
@@ -110,7 +110,7 @@ TEST(AsioTest, CancellationSlotIntegration) {
     auto sig = std::make_shared<boost::asio::cancellation_signal>();
     auto timer = std::make_shared<boost::asio::steady_timer>(io, std::chrono::seconds(10));
 
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
     auto child = current.Spawn("child", [timer, sig, &childExecuted]() -> Coroutine<void> {
       auto [ec] = co_await timer->async_wait(boost::asio::bind_cancellation_slot(sig->slot(), AsioUseFiber));
       EXPECT_EQ(ec, boost::asio::error::operation_aborted);
@@ -169,11 +169,14 @@ TEST(AsioTest, TcpSocketMultipleRounds) {
   using boost::asio::ip::tcp;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     // Start acceptor
     tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
     tcp::endpoint serverEndpoint = acceptor.local_endpoint();
+    if (serverEndpoint.address().is_unspecified()) {
+      serverEndpoint.address(boost::asio::ip::address_v4::loopback());
+    }
 
     // Server Fiber
     auto server = current.Spawn("server", [&]() -> Coroutine<void> {

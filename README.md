@@ -72,14 +72,14 @@ The fiber scheduler. It runs a queue of "ready" fibers and schedules them onto t
   });
   ```
 
-### 4. GetCurrentFiber Awaitable (`GetCurrentFiber`)
+### 4. GetCurrentOmniFiber Awaitable (`GetCurrentOmniFiber`)
 An awaitable to retrieve a reference to the active `Fiber` from inside a running fiber, without relying on any global or thread-local states.
 - **Usage**:
   ```cpp
-  #include <omnifiber/GetCurrentFiber.hpp>
+  #include <omnifiber/GetCurrentOmniFiber.hpp>
 
   Omni::Fiber::Coroutine<void> Worker() {
-      Fiber& current = co_await Omni::Fiber::GetCurrentFiber();
+      Fiber& current = co_await Omni::Fiber::GetCurrentOmniFiber();
       // Use current fiber reference...
       co_return;
   }
@@ -171,7 +171,7 @@ Below is a complete example demonstrating how to initialize the `Manager`, bind 
 #include <boost/asio.hpp>
 #include <omnifiber/Coroutine.hpp>
 #include <omnifiber/Fiber.hpp>
-#include <omnifiber/GetCurrentFiber.hpp>
+#include <omnifiber/GetCurrentOmniFiber.hpp>
 #include <omnifiber/Manager.hpp>
 #include <omnifiber/Asio.hpp>
 #include <omnifiber/Event.hpp>
@@ -180,7 +180,7 @@ using namespace Omni::Fiber;
 
 Coroutine<void> WorkerFiber(int id, std::shared_ptr<Event<void>> startSignal, boost::asio::any_io_executor executor) {
     std::cout << "[Worker " << id << "] Waiting for start signal..." << std::endl;
-    co_await *startSignal; // Yield until signaled
+    co_await *startSignal; // OmniYield until signaled
 
     std::cout << "[Worker " << id << "] Started! Performing async work..." << std::endl;
     
@@ -199,7 +199,7 @@ int main() {
     auto startSignal = std::make_shared<Event<void>>();
 
     manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-        Fiber& currentFiber = co_await GetCurrentFiber();
+        Fiber& currentFiber = co_await GetCurrentOmniFiber();
         std::cout << "[Root] Spawning worker fibers..." << std::endl;
 
         auto worker1 = currentFiber.Spawn("worker1", [&]() { return WorkerFiber(1, startSignal, io); });

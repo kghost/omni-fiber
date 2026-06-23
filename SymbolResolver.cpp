@@ -1,10 +1,11 @@
 #include "SymbolResolver.hpp"
 
 #ifndef NDEBUG
+#if __has_include(<dlfcn.h>)
 #include <cxxabi.h>
 #include <dlfcn.h>
+#endif
 #include <sstream>
-#include <unistd.h>
 
 #include "SymbolResolverDwfl.hpp"
 
@@ -23,6 +24,7 @@ std::string ResolveSymbol(void* address) {
     return oss.str();
   }
 
+#if __has_include(<dlfcn.h>)
   // 2. Fallback to dladdr if DWARF resolution is not available or failed
   Dl_info info;
   if (dladdr(address, &info) && info.dli_sname) {
@@ -35,6 +37,8 @@ std::string ResolveSymbol(void* address) {
       oss << " (" << info.dli_sname << ")";
     }
   }
+#endif
+
   return oss.str();
 }
 

@@ -6,7 +6,7 @@
 #include "Coroutine.hpp"
 #include "EventQueue.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 
 using namespace Omni::Fiber;
@@ -85,7 +85,7 @@ int main() {
 
   // Spawn the root fiber to orchestrate the worker and producer tree
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
     std::cout << "[Root] Spawning fibers..." << std::endl;
 
     // Spawn three worker fibers

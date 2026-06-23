@@ -1,9 +1,3 @@
-#define BOOST_USE_WINAPI_VERSION BOOST_WINAPI_VERSION_WIN7
-
-#ifdef HAVE_CONFIG_H
-#include "../config.h"
-#endif
-
 #ifdef _WIN32
 #ifndef NDEBUG
 #define _CRTDBG_MAP_ALLOC
@@ -18,7 +12,6 @@
 // If you wish to build your application for a previous Windows platform, include WinSDKVer.h and
 // set the _WIN32_WINNT macro to the platform you wish to support before including SDKDDKVer.h.
 #include <SDKDDKVer.h>
-#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
 #include <Windows.h>
 #define USE_WIDECHAR_API 1
 #else

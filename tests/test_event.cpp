@@ -8,7 +8,7 @@
 #include "Coroutine.hpp"
 #include "Event.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 
 using namespace Omni::Fiber;
@@ -61,7 +61,7 @@ TEST(EventTest, SingleAwaiter) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("awaiter", [&]() -> Coroutine<void> {
       sequence.push_back("awaiter_suspend");
@@ -101,7 +101,7 @@ TEST(EventTest, MultipleAwaiters) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child1 = current.Spawn("awaiter1", [&]() -> Coroutine<void> {
       sequence.push_back("awaiter1_suspend");
@@ -158,7 +158,7 @@ TEST(EventTest, MultipleAwaitersEarlyFire) {
   bool child2Executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child1 = current.Spawn("awaiter1", [&]() -> Coroutine<void> {
       co_await event;

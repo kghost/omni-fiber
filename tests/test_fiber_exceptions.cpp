@@ -8,7 +8,7 @@
 #include "EventQueue.hpp"
 #include "Fiber.hpp"
 #include "FiberException.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 
 using namespace Omni::Fiber;
@@ -47,7 +47,7 @@ TEST(FiberExceptionTest, ChildExceptionPropagatesToJoin) {
   bool exceptionCaught = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       throw std::runtime_error("Test exception in child");
@@ -86,7 +86,7 @@ TEST(FiberExceptionTest, ChildExceptionPropagatesToWaitFor) {
   bool exceptionCaught = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       throw std::runtime_error("Test exception in child for WaitFor");
@@ -185,10 +185,10 @@ TEST(FiberExceptionTest, NestedExceptionPropagation) {
   Manager manager(executor);
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("child", [&]() -> Coroutine<void> {
-      Fiber& childFiber = co_await GetCurrentFiber();
+      Fiber& childFiber = co_await GetCurrentOmniFiber();
 
       auto grandchild = childFiber.Spawn("grandchild", [&]() -> Coroutine<void> {
         throw std::runtime_error("Grandchild error");
@@ -251,7 +251,7 @@ TEST(FiberExceptionTest, CaughtExceptionDoesNotPropagate) {
   bool parentCompleted = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       throw std::runtime_error("Child error caught by parent");

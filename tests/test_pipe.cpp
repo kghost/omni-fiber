@@ -8,7 +8,7 @@
 #include "Asio.hpp"
 #include "Coroutine.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 #include "Pipe.hpp"
 
@@ -50,7 +50,7 @@ TEST(PipeTest, BasicPutAndGet) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       EXPECT_TRUE(pipe.GetProducer().AwaitReady());
@@ -91,7 +91,7 @@ TEST(PipeTest, BasicClose) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       co_await pipe.GetProducer().Close();
@@ -126,7 +126,7 @@ TEST(PipeTest, ProducerSuspension) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       sequence.push_back("prod_put_1");
@@ -188,7 +188,7 @@ TEST(PipeTest, ConsumerSuspension) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto consumerFiber = current.Spawn("consumer", [&]() -> Coroutine<void> {
       sequence.push_back("cons_read_1");
@@ -249,7 +249,7 @@ TEST(PipeTest, MoveOnlyObject) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
       auto data = std::make_unique<int>(1337);

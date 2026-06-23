@@ -7,7 +7,7 @@
 #include "Asio.hpp"
 #include "Coroutine.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 
 using namespace Omni::Fiber;
@@ -20,7 +20,7 @@ void RunEventLoop(boost::asio::io_context& io) {
 }
 
 Coroutine<void> NestedLevel3(Fiber& expectedFiber, bool& executed) {
-  Fiber& currentFiber = co_await GetCurrentFiber();
+  Fiber& currentFiber = co_await GetCurrentOmniFiber();
   EXPECT_EQ(&currentFiber, &expectedFiber);
   executed = true;
   co_return;
@@ -48,7 +48,7 @@ TEST(GetCurrentFiberTest, RetrieveRootFiber) {
 
   std::shared_ptr<Fiber> root;
   root = manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& currentFiber = co_await GetCurrentFiber();
+    Fiber& currentFiber = co_await GetCurrentOmniFiber();
     // Since this is the root fiber, currentFiber should be the active root fiber
     EXPECT_EQ(&currentFiber, root.get());
     executed = true;
@@ -68,7 +68,7 @@ TEST(GetCurrentFiberTest, RetrieveInNestedCoroutines) {
   bool executed = false;
 
   auto root = manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& currentFiber = co_await GetCurrentFiber();
+    Fiber& currentFiber = co_await GetCurrentOmniFiber();
     co_await NestedLevel1(currentFiber, executed);
     co_return;
   });
@@ -89,17 +89,17 @@ TEST(GetCurrentFiberTest, SiblingFibers) {
   std::shared_ptr<Fiber> child2Ref;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     child1Ref = current.Spawn("child1", [&]() -> Coroutine<void> {
-      Fiber& currentFiber = co_await GetCurrentFiber();
+      Fiber& currentFiber = co_await GetCurrentOmniFiber();
       EXPECT_EQ(&currentFiber, child1Ref.get());
       child1Executed = true;
       co_return;
     });
 
     child2Ref = current.Spawn("child2", [&]() -> Coroutine<void> {
-      Fiber& currentFiber = co_await GetCurrentFiber();
+      Fiber& currentFiber = co_await GetCurrentOmniFiber();
       EXPECT_EQ(&currentFiber, child2Ref.get());
       child2Executed = true;
       co_return;

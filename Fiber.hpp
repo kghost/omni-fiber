@@ -121,7 +121,7 @@ public:
 
   OMNIFIBER_API AwaiterAlwaysSuspend<SharedAwaiter> ChildAwaitor();
   OMNIFIBER_API Coroutine<void> Wait(std::function<bool()> until);
-  OMNIFIBER_API void TryJoin(std::shared_ptr<Fiber> child);
+  OMNIFIBER_API bool TryJoin(std::shared_ptr<Fiber> child);
   OMNIFIBER_API Coroutine<void> Join(std::shared_ptr<Fiber> child);
   OMNIFIBER_API Coroutine<std::shared_ptr<Fiber>> WaitFor();
   OMNIFIBER_API Coroutine<void> WaitAll();
@@ -167,7 +167,7 @@ private:
   Fiber& operator=(Fiber&&) = delete;
 
   OMNIFIBER_API void Suspend(std::coroutine_handle<> caller);
-  OMNIFIBER_API void Yield(std::coroutine_handle<> caller);
+  OMNIFIBER_API void OmniYield(std::coroutine_handle<> caller);
   OMNIFIBER_API void Resume(); // Called by Manager to continue this fiber.
 
   OMNIFIBER_API void Starting(std::coroutine_handle<Fiber::FiberFrame::Promise> caller);

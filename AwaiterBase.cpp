@@ -14,7 +14,7 @@ void FiberActionBase::SetSuspendedPromise(Fiber& fiber, FiberPromise& promise) {
 #endif
 
 void FiberSuspender::DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Suspend(caller); }
-void FiberYielder::DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Yield(caller); }
+void FiberYielder::DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.OmniYield(caller); }
 
 } // namespace Fiber
 } // namespace Omni

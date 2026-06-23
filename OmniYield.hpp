@@ -4,9 +4,9 @@
 
 namespace Omni::Fiber {
 
-class Yield : public AwaiterBase<FiberYielder> {
+class OmniYield : public AwaiterBase<FiberYielder> {
 public:
-  explicit Yield() = default;
+  explicit OmniYield() = default;
 
   constexpr bool await_ready() const noexcept { return false; }
   constexpr void await_resume() const noexcept {}

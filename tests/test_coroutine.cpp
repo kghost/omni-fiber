@@ -8,7 +8,7 @@
 #include "Coroutine.hpp"
 #include "Event.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 
 using namespace Omni::Fiber;
@@ -170,7 +170,7 @@ TEST(CoroutineTest, ThreeLevelsWithCooperativeSuspend) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("root: Spawning Level1");
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("child_call_stack", [&]() -> Coroutine<void> {
       co_await Level1Suspend(sequence, event);

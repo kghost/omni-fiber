@@ -2,7 +2,6 @@
 
 #include <concepts>
 #include <optional>
-#include <sys/epoll.h>
 #include <type_traits>
 
 #include "AwaiterCustom.hpp"
@@ -31,7 +30,7 @@ public:
 
   template <typename U = DataType>
     requires(std::is_void_v<U>)
-  OMNIFIBER_API void Fire() {
+  void Fire() {
     _Data = true;
     SharedAwaiter::Fire(_AwaitContext);
   }
@@ -61,7 +60,7 @@ public:
 
   template <typename T, typename U = DataType>
     requires(!std::is_void_v<U>)
-  OMNIFIBER_API void Fire(T&& data) {
+  void Fire(T&& data) {
     _Data.emplace(std::forward<T>(data));
     SharedAwaiter::Fire(_AwaitContext);
   }
@@ -84,7 +83,7 @@ public:
     return std::move(_Data.value());
   }
 
-  OMNIFIBER_API AwaiterCustom<Event, SharedAwaiter> operator co_await() {
+  AwaiterCustom<Event, SharedAwaiter> operator co_await() {
     return AwaiterCustom<Event, SharedAwaiter>(_AwaitContext, *this);
   }
 

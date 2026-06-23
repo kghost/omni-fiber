@@ -7,7 +7,7 @@
 
 #include "AwaiterAlwaysSuspend.hpp"
 #include "FiberException.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 #include "SharedAwaitContext.hpp"
 #include "SharedAwaiter.hpp"
@@ -32,13 +32,13 @@ AwaiterAlwaysSuspend<SharedAwaiter> Fiber::ChildAwaitor() {
 }
 
 Coroutine<void> Fiber::Wait(std::function<bool()> until) {
-  assert(&co_await GetCurrentFiber() == this);
+  assert(&co_await GetCurrentOmniFiber() == this);
   while (!until()) {
     co_await ChildAwaitor();
   }
 }
 
-void Fiber::TryJoin(std::shared_ptr<Fiber> child) {
+bool Fiber::TryJoin(std::shared_ptr<Fiber> child) {
   assert(_Children.contains(child) || _FinishedChildren.contains(child));
   auto it = _FinishedChildren.find(child);
   if (it != _FinishedChildren.end()) {
@@ -46,17 +46,16 @@ void Fiber::TryJoin(std::shared_ptr<Fiber> child) {
     if (child->_Exception.has_value()) {
       throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
     }
+    return true;
+  } else {
+    return false;
   }
-  return;
 }
 
 Coroutine<void> Fiber::Join(std::shared_ptr<Fiber> child) {
-  assert(_Children.contains(child) || _FinishedChildren.contains(child));
   co_await Wait([&] { return _FinishedChildren.contains(child); });
-  _FinishedChildren.erase(child);
-  if (child->_Exception.has_value()) {
-    throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
-  }
+  auto joined = TryJoin(child);
+  assert(joined);
   co_return;
 }
 
@@ -94,7 +93,7 @@ void Fiber::Suspend(std::coroutine_handle<> caller) {
   _State = State::Suspending;
 }
 
-void Fiber::Yield(std::coroutine_handle<> caller) {
+void Fiber::OmniYield(std::coroutine_handle<> caller) {
   assert(_State == State::Running);
   assert(!_Continuation.has_value());
   _Continuation.emplace(caller);

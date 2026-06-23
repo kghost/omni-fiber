@@ -9,6 +9,6 @@ target_link_libraries(omnifiber_example
     Boost::thread
 )
 
-target_compile_options(omnifiber_example PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_compile_options(omnifiber_example PRIVATE -fsanitize=address)
 target_link_options(omnifiber_example PRIVATE -fsanitize=address)
 

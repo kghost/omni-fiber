@@ -10,7 +10,7 @@
 #include "Coroutine.hpp"
 #include "Event.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 #include "RemoteCall.hpp"
 #include "Select.hpp"
@@ -37,7 +37,7 @@ TEST(RemoteCallTest, BasicValueCall) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto server = current.Spawn("server", [&]() -> Coroutine<void> {
       co_await rc.Serve();
@@ -74,7 +74,7 @@ TEST(RemoteCallTest, VoidReplyCall) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto server = current.Spawn("server", [&]() -> Coroutine<void> {
       co_await rc.Serve();
@@ -111,7 +111,7 @@ TEST(RemoteCallTest, MoveOnlyTypes) {
   bool executed = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto server = current.Spawn("server", [&]() -> Coroutine<void> {
       co_await rc.Serve();
@@ -152,7 +152,7 @@ TEST(RemoteCallTest, SequentialCalls) {
   std::vector<int> replies;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto server = current.Spawn("server", [&]() -> Coroutine<void> {
       co_await rc.Serve();
@@ -191,7 +191,7 @@ TEST(RemoteCallTest, ConcurrentCalls) {
   std::vector<int> replies;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto server = current.Spawn("server", [&]() -> Coroutine<void> {
       co_await rc.Serve();
@@ -234,7 +234,7 @@ TEST(RemoteCallTest, ServerShutdown) {
   bool server_exited = false;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto server = current.Spawn("server", [&]() -> Coroutine<void> {
       co_await rc.Serve();
@@ -267,7 +267,7 @@ TEST(RemoteCallTest, SelectIntegration) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto select_loop = current.Spawn("select_loop", [&]() -> Coroutine<void> {
       bool loop_active = true;

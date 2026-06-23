@@ -6,7 +6,7 @@
 
 namespace Omni::Fiber {
 
-class GetCurrentFiber {
+class GetCurrentOmniFiber {
 public:
   constexpr bool await_ready() const noexcept { return false; }
 

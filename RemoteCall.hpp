@@ -28,7 +28,7 @@ public:
   Coroutine<std::expected<Reply, CallFailed>> Call(Func&& func) {
     Event<std::expected<Reply, CallFailed>> event;
     std::expected<void, PipeClosed> res =
-        co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event](this auto&&) -> Coroutine<void> {
+        co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event]() mutable -> Coroutine<void> {
           if constexpr (std::is_void_v<Reply>) {
             co_await func();
             event.Fire(std::expected<void, CallFailed>{});

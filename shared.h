@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && defined(OMNIFIBER_DYNAMIC)
 
 #ifdef OMNIFIBER_EXPORTS
 #define OMNIFIBER_API __declspec(dllexport)
@@ -8,7 +8,7 @@
 #define OMNIFIBER_API __declspec(dllimport)
 #endif
 
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && defined(OMNIFIBER_DYNAMIC)
 
 #ifdef OMNIFIBER_EXPORTS
 #define OMNIFIBER_API __attribute__((visibility("default")))
@@ -17,5 +17,5 @@
 #endif
 
 #else
-#pragma warning Unknown dynamic link import / export semantics.
+#define OMNIFIBER_API
 #endif

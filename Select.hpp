@@ -8,6 +8,7 @@
 
 #include "AwaiterBase.hpp"
 #include "Coroutine.hpp"
+#include "Tuple.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -20,16 +21,16 @@ private:
                 "All awaiters in Select must have AwaiterResultExpectedType");
 
 public:
-  explicit SelectAwaiter(Awaitables&... aAwaitables) : _Awaiters(aAwaitables...) {}
+  explicit SelectAwaiter(Awaitables&... aAwaitables)
+      : _Awaiters{{static_cast<typename Awaitables::Awaiter>(aAwaitables)}...} {}
 
   bool await_ready() const {
-    return std::apply([](const auto&... awaiter) { return (awaiter.await_ready() || ...); }, _Awaiters);
+    return Apply([](const auto&... awaiter) { return (awaiter.await_ready() || ...); }, _Awaiters);
   }
 
   void OnAwaitSuspend() {
     auto& parent = this->GetOwnerPromise();
-    std::apply([&](auto&... awaiter) { ((awaiter.SetOwnerPromise(parent), awaiter.OnAwaitSuspend()), ...); },
-               _Awaiters);
+    Apply([&](auto&... awaiter) { ((awaiter.SetOwnerPromise(parent), awaiter.OnAwaitSuspend()), ...); }, _Awaiters);
   }
 
   template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
@@ -52,12 +53,12 @@ public:
     };
 
     return [&]<size_t... Is>(std::index_sequence<Is...>) {
-      return std::make_tuple(resume(std::get<Is>(_Awaiters))...);
+      return std::make_tuple(resume(Get<Is>(_Awaiters))...);
     }(std::index_sequence_for<Awaitables...>{});
   }
 
 private:
-  std::tuple<typename Awaitables::Awaiter...> _Awaiters;
+  Tuple<typename Awaitables::Awaiter...> _Awaiters;
 };
 
 template <typename... Pairs> Coroutine<std::tuple<typename Pairs::ResultType...>> Select(Pairs... pairs) {

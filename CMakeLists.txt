@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+cmake_policy(SET CMP0167 NEW)
 project(omni-fiber)
 
 option(OMNIFIBER_INTERNAL "Build omni-fiber as an internal static library" OFF)
@@ -7,10 +8,6 @@ option(OMNIFIBER_INTERNAL "Build omni-fiber as an internal static library" OFF)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-if(POLICY CMP0167)
-  cmake_policy(SET CMP0167 NEW)
-endif()
 
 enable_testing()
 
@@ -84,14 +81,14 @@ foreach(suffix "" "-asan")
   )
 
   # Compiler specific options
-  if(MSVC)
-    target_compile_options(${target} PRIVATE /W3 /Zc:preprocessor)
+  if(WIN32)
+    target_compile_options(${target} PRIVATE /W3 /Zc:preprocessor /Od)
   else()
     target_compile_options(${target} PRIVATE -Wall -Wextra -fvisibility=hidden)
   endif()
 
   if(suffix STREQUAL "-asan")
-    target_compile_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    target_compile_options(${target} PRIVATE -fsanitize=address)
     target_link_options(${target} PRIVATE -fsanitize=address)
   endif()
 endforeach()
@@ -116,7 +113,7 @@ if(NOT OMNIFIBER_INTERNAL)
     Fiber.hpp
     SharedAwaiter.hpp
     FiberFinishNotifier.hpp
-    GetCurrentFiber.hpp
+    GetCurrentOmniFiber.hpp
     Manager.hpp
     Pipe.hpp
     RemoteCall.hpp
@@ -124,7 +121,7 @@ if(NOT OMNIFIBER_INTERNAL)
     SelectPair.hpp
     SelectPairList.hpp
     SelectPairDynamicList.hpp
-    Yield.hpp
+    OmniYield.hpp
     shared.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/omni-fiber
   )

@@ -17,9 +17,9 @@
 #include "Event.hpp"
 #include "EventQueue.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
-#include "Yield.hpp"
+#include "OmniYield.hpp"
 
 using namespace Omni::Fiber;
 
@@ -40,7 +40,7 @@ TEST(FiberTest, BasicSpawnAndSchedule) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     rootExecuted = true;
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       childExecuted = true;
@@ -67,7 +67,7 @@ TEST(FiberTest, FiberJoin) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     order.push_back("root_start");
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child = current.Spawn("child", [&]() -> Coroutine<void> {
       order.push_back("child_run");
@@ -122,7 +122,7 @@ TEST(FiberTest, CooperativeEvent) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     // Spawn consumer
     auto consumer = current.Spawn("consumer", [&]() -> Coroutine<void> {
@@ -170,7 +170,7 @@ TEST(FiberTest, CooperativeEventQueue) {
   std::vector<int> received;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     // Consumer
     auto consumer = current.Spawn("consumer", [&]() -> Coroutine<void> {
@@ -211,7 +211,7 @@ TEST(FiberTest, WaitForBasic) {
   std::vector<std::shared_ptr<Fiber>> finishedOrder;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     Event<void> child1Event;
     Event<void> child2Event;
@@ -258,7 +258,7 @@ TEST(FiberTest, WaitForAlreadyFinished) {
   std::string finishedName;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     Event<void> resumeEvent1;
     Event<void> resumeEvent2;
@@ -291,7 +291,7 @@ TEST(FiberTest, WaitForMultipleAlreadyFinished) {
   std::vector<std::string> finishedNames;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     Event<void> resumeEvent1;
     auto child1 = current.Spawn("first", [&]() -> Coroutine<void> {
@@ -330,7 +330,7 @@ TEST(FiberTest, JoinInterleavedSignalLossBug) {
   std::string waitedName;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     Event<void> event1;
     Event<void> event2;
@@ -414,7 +414,7 @@ TEST(FiberTest, CallstackTrace) {
   std::shared_ptr<Fiber> child;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     child = current.Spawn("trace_child", [&]() -> Coroutine<void> {
       co_await CallstackTrace_A(event);
@@ -460,13 +460,13 @@ TEST(FiberTest, FiberYieldLowPriority) {
   std::vector<std::string> order;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto child1 = current.Spawn("child1", [&]() -> Coroutine<void> {
       order.push_back("child1_1");
-      co_await Yield();
+      co_await OmniYield();
       order.push_back("child1_2");
-      co_await Yield();
+      co_await OmniYield();
       order.push_back("child1_3");
       co_return;
     });

@@ -8,7 +8,7 @@
 #include "Coroutine.hpp"
 #include "Event.hpp"
 #include "Fiber.hpp"
-#include "GetCurrentFiber.hpp"
+#include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
 #include "Pipe.hpp"
 #include "Select.hpp"
@@ -39,7 +39,7 @@ TEST(SelectPairDynamicListTest, MixedAwaitables) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       sequence.push_back("fire_events");
@@ -89,7 +89,7 @@ TEST(SelectPairDynamicListTest, CoroutineCallbacks) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       sequence.push_back("fire_int");
@@ -138,7 +138,7 @@ TEST(SelectPairDynamicListTest, RaiiCancellation) {
   Pipe<int> pipe;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       eventVoid.Fire();
@@ -177,7 +177,7 @@ TEST(SelectPairDynamicListTest, UsedDirectlyInsideSelectMixed) {
   std::vector<std::string> sequence;
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
-    Fiber& current = co_await GetCurrentFiber();
+    Fiber& current = co_await GetCurrentOmniFiber();
 
     auto notifier = current.Spawn("notifier", [&]() -> Coroutine<void> {
       sequence.push_back("fire_event2");
