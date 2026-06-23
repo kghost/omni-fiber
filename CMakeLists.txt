@@ -70,7 +70,7 @@ foreach(suffix "" "-asan")
     target_link_libraries(${target} PUBLIC stdc++exp)
   endif()
 
-  if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ANDROID)
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ANDROID AND NOT WIN32)
     pkg_check_modules(LIBDW REQUIRED libdw)
     target_link_libraries(${target} PRIVATE ${LIBDW_LIBRARIES})
   endif()
