@@ -49,7 +49,7 @@ public:
 
     auto Awaiter() { return AwaiterCustom<Producer, SharedAwaiter>(_Pipe._AwaitWriteContext, *this); }
     Coroutine<std::expected<void, PipeClosed>> Put(DataType&& data) && { return PutData(std::forward<DataType>(data)); }
-    Coroutine<std::expected<void, PipeClosed>> Close() && { return PutData(Closed{}); }
+    Coroutine<std::expected<void, PipeClosed>> Shutdown() && { return PutData(Closed{}); }
 
   private:
     Pipe& _Pipe;
@@ -100,6 +100,12 @@ public:
 
     AwaiterCustom<Consumer, SharedAwaiter> operator co_await() && {
       return AwaiterCustom<Consumer, SharedAwaiter>(_Pipe._AwaitReadContext, *this);
+    }
+
+    void DiscardAndClose() && {
+      _Pipe._Data.template emplace<Closed>();
+      SharedAwaiter::Fire(_Pipe._AwaitWriteContext);
+      SharedAwaiter::Fire(_Pipe._AwaitReadContext);
     }
 
   private:

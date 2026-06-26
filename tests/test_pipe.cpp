@@ -33,7 +33,7 @@ TEST(PipeTest, InitialState) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     EXPECT_TRUE(pipe.GetProducer().AwaitReady());
     EXPECT_FALSE(pipe.GetConsumer().AwaitReady());
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
   RunEventLoop(io);
@@ -72,7 +72,7 @@ TEST(PipeTest, BasicPutAndGet) {
 
     co_await current.Join(producerFiber);
     co_await current.Join(consumerFiber);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 
@@ -94,7 +94,7 @@ TEST(PipeTest, BasicClose) {
     Fiber& current = co_await GetCurrentOmniFiber();
 
     auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
-      co_await pipe.GetProducer().Close();
+      co_await pipe.GetProducer().Shutdown();
       executed = true;
       co_return;
     });
@@ -162,7 +162,7 @@ TEST(PipeTest, ProducerSuspension) {
 
     co_await current.Join(producerFiber);
     co_await current.Join(consumerFiber);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 
@@ -214,7 +214,7 @@ TEST(PipeTest, ConsumerSuspension) {
       co_await pipe.GetProducer().Put(100);
 
       sequence.push_back("prod_close");
-      co_await pipe.GetProducer().Close();
+      co_await pipe.GetProducer().Shutdown();
 
       sequence.push_back("prod_done");
       co_return;
@@ -272,7 +272,42 @@ TEST(PipeTest, MoveOnlyObject) {
 
     co_await current.Join(producerFiber);
     co_await current.Join(consumerFiber);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(executed);
+}
+
+// 8. Test case: Consumer DiscardAndClose wakes up pending writers immediately
+TEST(PipeTest, DiscardAndClose) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io.get_executor());
+  Manager manager(executor);
+
+  Pipe<int> pipe;
+  bool executed = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentOmniFiber();
+
+    auto producerFiber = current.Spawn("producer", [&]() -> Coroutine<void> {
+      co_await pipe.GetProducer().Put(42);
+      auto res = co_await pipe.GetProducer().Put(43);
+      EXPECT_FALSE(res.has_value()); // should return PipeClosed
+      executed = true;
+      co_return;
+    });
+
+    // Let the producer put 42 and then block on 43
+    boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+    co_await timer.async_wait(AsioUseFiber);
+
+    // Call DiscardAndClose on the consumer side
+    std::move(pipe.GetConsumer()).DiscardAndClose();
+
+    co_await current.Join(producerFiber);
     co_return;
   });
 

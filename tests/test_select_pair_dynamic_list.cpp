@@ -63,7 +63,7 @@ TEST(SelectPairDynamicListTest, MixedAwaitables) {
     sequence.push_back("select_done");
 
     co_await current.Join(notifier);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 
@@ -154,7 +154,7 @@ TEST(SelectPairDynamicListTest, RaiiCancellation) {
     } // list is destroyed here, and pipe consumer must be cancelled
 
     co_await current.Join(notifier);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 

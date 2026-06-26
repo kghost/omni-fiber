@@ -50,7 +50,7 @@ TEST(RemoteCallTest, BasicValueCall) {
       EXPECT_TRUE(reply.has_value());
       EXPECT_EQ(reply.value(), "hello 42");
       executed = true;
-      co_await rc.Close();
+      co_await rc.Shutdown();
       co_return;
     });
 
@@ -87,7 +87,7 @@ TEST(RemoteCallTest, VoidReplyCall) {
         co_return;
       });
       executed = true;
-      co_await rc.Close();
+      co_await rc.Shutdown();
       co_return;
     });
 
@@ -129,7 +129,7 @@ TEST(RemoteCallTest, MoveOnlyTypes) {
       EXPECT_NE(reply.value(), nullptr);
       EXPECT_EQ(*reply.value(), 1338);
       executed = true;
-      co_await rc.Close();
+      co_await rc.Shutdown();
       co_return;
     });
 
@@ -165,7 +165,7 @@ TEST(RemoteCallTest, SequentialCalls) {
         EXPECT_TRUE(reply.has_value());
         replies.push_back(reply.value());
       }
-      co_await rc.Close();
+      co_await rc.Shutdown();
       co_return;
     });
 
@@ -214,7 +214,7 @@ TEST(RemoteCallTest, ConcurrentCalls) {
 
     co_await current.Join(client1);
     co_await current.Join(client2);
-    co_await rc.Close();
+    co_await rc.Shutdown();
     co_await current.Join(server);
     co_return;
   });
@@ -243,7 +243,7 @@ TEST(RemoteCallTest, ServerShutdown) {
     });
 
     auto client = current.Spawn("client", [&]() -> Coroutine<void> {
-      co_await rc.Close();
+      co_await rc.Shutdown();
       co_return;
     });
 
@@ -300,7 +300,7 @@ TEST(RemoteCallTest, SelectIntegration) {
 
     co_await current.Join(select_loop);
     co_await current.Join(client);
-    co_await rc.Close();
+    co_await rc.Shutdown();
     co_return;
   });
 
@@ -310,4 +310,38 @@ TEST(RemoteCallTest, SelectIntegration) {
   ASSERT_EQ(sequence.size(), 2);
   EXPECT_EQ(sequence[0], "client_rpc_returned");
   EXPECT_EQ(sequence[1], "event1_fired");
+}
+
+// 8. Test case: Call returns CallFailed if request lambda is discarded before execution
+TEST(RemoteCallTest, DiscardedRequestFailsCall) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io.get_executor());
+  Manager manager(executor);
+
+  RemoteCall rc;
+  bool executed = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentOmniFiber();
+
+    auto client = current.Spawn("client", [&]() -> Coroutine<void> {
+      auto reply = co_await rc.Call([]() -> Coroutine<int> { co_return 42; });
+      EXPECT_FALSE(reply.has_value()); // should return CallFailed
+      executed = true;
+      co_return;
+    });
+
+    // Let the client post the request to the pipe (which is not consumed because we don't call Serve)
+    boost::asio::steady_timer timer(io, std::chrono::milliseconds(50));
+    co_await timer.async_wait(AsioUseFiber);
+
+    // Now close/discard the remote call
+    rc.DiscardAndClose();
+
+    co_await current.Join(client);
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(executed);
 }

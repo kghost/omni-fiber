@@ -6,8 +6,8 @@
 
 #include "Coroutine.hpp"
 #include "Event.hpp"
-#include "Pipe.hpp"
 #include "MoveOnlyFunction.hpp"
+#include "Pipe.hpp"
 
 namespace Omni {
 namespace Fiber {
@@ -26,14 +26,30 @@ public:
 
   template <typename Func, typename Reply = decltype(std::declval<Func>()())::CoroutineReturnType>
   Coroutine<std::expected<Reply, CallFailed>> Call(Func&& func) {
+    struct CallGuard {
+      Event<std::expected<Reply, CallFailed>>& Ev;
+      bool Fired = false;
+      explicit CallGuard(Event<std::expected<Reply, CallFailed>>& ev) : Ev(ev) {}
+      ~CallGuard() {
+        if (!Fired) {
+          Ev.Fire(std::unexpected<CallFailed>{CallFailed{}});
+        }
+      }
+    };
+
     Event<std::expected<Reply, CallFailed>> event;
+
     std::expected<void, PipeClosed> res =
-        co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event]() mutable -> Coroutine<void> {
+        co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event,
+                                          guard = std::make_shared<CallGuard>(event)]() mutable -> Coroutine<void> {
           if constexpr (std::is_void_v<Reply>) {
             co_await func();
+            guard->Fired = true;
             event.Fire(std::expected<void, CallFailed>{});
           } else {
-            event.Fire(std::expected<Reply, CallFailed>{co_await func()});
+            auto val = co_await func();
+            guard->Fired = true;
+            event.Fire(std::expected<Reply, CallFailed>{std::move(val)});
           }
           co_return;
         });
@@ -44,7 +60,8 @@ public:
     }
   }
 
-  Coroutine<void> Close() { co_await _Pipe.GetProducer().Close(); }
+  Coroutine<void> Shutdown() { co_await _Pipe.GetProducer().Shutdown(); }
+  void DiscardAndClose() { _Pipe.GetConsumer().DiscardAndClose(); }
 
   decltype(auto) GetServiceAwaitor() { return _Pipe.GetConsumer(); }
 

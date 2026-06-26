@@ -223,7 +223,7 @@ TEST(SelectTest, PipeConsumerSelect) {
     }));
 
     co_await current.Join(notifier);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 
@@ -258,7 +258,7 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
     }));
 
     co_await current.Join(notifier);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 
@@ -507,7 +507,7 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
     timer.cancel();
 
     co_await current.Join(notifier);
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 
@@ -543,7 +543,7 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
                                  sequence.push_back("callback_timer triggered");
                                })));
     sequence.push_back("select_done");
-    co_await pipe.GetProducer().Close();
+    co_await pipe.GetProducer().Shutdown();
     co_return;
   });
 

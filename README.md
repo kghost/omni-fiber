@@ -137,7 +137,7 @@ auto consumer = pipe.GetConsumer();
 
 // Inside Producer Fiber
 co_await producer.Put("Hello, Pipe!"); // Blocks until consumed
-producer.Close();                      // Closes the pipe
+producer.Shutdown();                      // Closes the pipe
 
 // Inside Consumer Fiber
 std::expected<std::string, PipeClosed> res = co_await consumer; // Suspends until ready
