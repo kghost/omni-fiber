@@ -1,5 +1,6 @@
 #include "SymbolResolverDwfl.hpp"
 
+#include <format>
 #include <optional>
 
 #ifndef NDEBUG
@@ -108,8 +109,18 @@ std::optional<std::string> ResolveSymbolDwfl(void* address) {
         }
       }
 
-      if (!resolvedName.empty() || !fileLine.empty()) {
-        return resolvedName.empty() ? "??" + (fileLine.empty() ? "" : " at " + fileLine) : resolvedName;
+      if (!resolvedName.empty()) {
+        if (!fileLine.empty()) {
+          return std::format("{} @ {}", resolvedName, fileLine);
+        } else {
+          return resolvedName;
+        }
+      } else {
+        if (!fileLine.empty()) {
+          return std::format("?? @ {}", fileLine);
+        } else {
+          return std::nullopt;
+        }
       }
     }
   }
