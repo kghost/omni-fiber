@@ -7,8 +7,6 @@
 #include "AwaiterCustom.hpp"
 #include "SharedAwaiter.hpp"
 
-#include "shared.h"
-
 namespace Omni {
 namespace Fiber {
 

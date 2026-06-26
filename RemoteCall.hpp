@@ -60,7 +60,9 @@ public:
     }
   }
 
-  Coroutine<void> Shutdown() { co_await _Pipe.GetProducer().Shutdown(); }
+  Coroutine<std::expected<void, CallFailed>> Shutdown() {
+    co_return (co_await _Pipe.GetProducer().Shutdown()).transform_error([](PipeClosed) { return CallFailed{}; });
+  }
   void DiscardAndClose() { _Pipe.GetConsumer().DiscardAndClose(); }
 
   decltype(auto) GetServiceAwaitor() { return _Pipe.GetConsumer(); }
