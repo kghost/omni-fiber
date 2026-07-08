@@ -4,8 +4,6 @@
 #include <functional>
 #include <optional>
 
-#include "shared.h"
-
 namespace Omni {
 namespace Fiber {
 
@@ -15,8 +13,8 @@ class SingleAwaiter;
 // It avoids dynamic allocation or complex map/tree data structures.
 class SingleAwaitContext final {
 public:
-  OMNIFIBER_API explicit SingleAwaitContext() = default;
-  OMNIFIBER_API ~SingleAwaitContext() {
+  explicit SingleAwaitContext() = default;
+  ~SingleAwaitContext() {
     assert(!_PendingAwaitable.has_value() && "SingleAwaitContext destroyed while there are still pending fibers");
   }
 
@@ -25,9 +23,9 @@ public:
   SingleAwaitContext(SingleAwaitContext&&) = delete;
   SingleAwaitContext& operator=(SingleAwaitContext&&) = delete;
 
-  OMNIFIBER_API void AddFiberAwaitable(SingleAwaiter& awaitable);
-  OMNIFIBER_API void RemoveFiberAwaitable(SingleAwaiter& awaitable);
-  OMNIFIBER_API void Fire();
+  void AddFiberAwaitable(SingleAwaiter& awaitable);
+  void RemoveFiberAwaitable(SingleAwaiter& awaitable);
+  void Fire();
 
 private:
   enum class FiberAwaitableState {

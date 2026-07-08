@@ -5,8 +5,6 @@
 #include <map>
 #include <memory>
 
-#include "shared.h"
-
 namespace Omni {
 namespace Fiber {
 
@@ -21,8 +19,8 @@ class SharedAwaiter;
 // SharedAwaitContext to trigger the event by calling Fire() method.
 class SharedAwaitContext final {
 public:
-  OMNIFIBER_API explicit SharedAwaitContext() {}
-  OMNIFIBER_API ~SharedAwaitContext() {
+  explicit SharedAwaitContext() {}
+  ~SharedAwaitContext() {
     assert(_PendingSet.empty() && "SharedAwaitContext destroyed while there are still pending fibers");
   }
 
@@ -31,9 +29,9 @@ public:
   SharedAwaitContext(SharedAwaitContext&&) = delete;
   SharedAwaitContext& operator=(SharedAwaitContext&&) = delete;
 
-  OMNIFIBER_API void AddFiberAwaitable(SharedAwaiter& awaitable);
-  OMNIFIBER_API void RemoveFiberAwaitable(SharedAwaiter& awaitable);
-  OMNIFIBER_API void Fire();
+  void AddFiberAwaitable(SharedAwaiter& awaitable);
+  void RemoveFiberAwaitable(SharedAwaiter& awaitable);
+  void Fire();
 
 private:
   struct AddressCompare {

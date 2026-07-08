@@ -14,8 +14,6 @@
 #include "Fiber.hpp"
 #include "FiberFinishNotifier.hpp"
 
-#include "shared.h"
-
 namespace Omni {
 namespace Fiber {
 
@@ -23,7 +21,7 @@ class Fiber;
 
 class Manager final : public FiberFinishNotifier {
 public:
-  OMNIFIBER_API Manager(Executor& executor);
+  Manager(Executor& executor);
   ~Manager();
 
   Manager(const Manager&) = delete;
@@ -31,9 +29,9 @@ public:
   Manager(Manager&&) = delete;
   Manager& operator=(Manager&&) = delete;
 
-  OMNIFIBER_API void DumpAllFibers();
-  OMNIFIBER_API void Schedule(Fiber& fiber); // Mark the fiber ready to be scheduled.
-  OMNIFIBER_API void YieldSchedule(Fiber& fiber);
+  void DumpAllFibers();
+  void Schedule(Fiber& fiber); // Mark the fiber ready to be scheduled.
+  void YieldSchedule(Fiber& fiber);
 
   // Spawn the root fiber
   template <typename CoroutineFunction>
@@ -75,7 +73,7 @@ public:
   void OnFiberFinished(Fiber& fiber) override;
 
 private:
-  OMNIFIBER_API void Run(); // Run until all fibers are not ready.
+  void Run(); // Run until all fibers are not ready.
 
   Executor& _Executor;
   bool Posted = false;

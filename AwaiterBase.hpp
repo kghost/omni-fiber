@@ -40,12 +40,12 @@ protected:
   explicit AwaiterBase() = default;
   ~AwaiterBase() = default;
 
+public:
   AwaiterBase(const AwaiterBase&) = delete;
   AwaiterBase& operator=(const AwaiterBase&) = delete;
   AwaiterBase(AwaiterBase&&) = delete;
   AwaiterBase& operator=(AwaiterBase&&) = delete;
 
-public:
   using AwaiterBaseImpl = Suspender;
 
   bool IsSuspended() const noexcept { return _OwnerFiber.has_value(); }

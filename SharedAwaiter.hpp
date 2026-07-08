@@ -4,7 +4,6 @@
 
 #include "AwaiterBase.hpp"
 #include "SharedAwaitContext.hpp"
-#include "shared.h"
 
 namespace Omni {
 namespace Fiber {
@@ -19,8 +18,8 @@ public:
   static void Fire(ContextStorage& context);
 
 protected:
-  OMNIFIBER_API explicit SharedAwaiter(ContextStorage& context);
-  OMNIFIBER_API ~SharedAwaiter();
+  explicit SharedAwaiter(ContextStorage& context);
+  ~SharedAwaiter();
 
   SharedAwaiter(const SharedAwaiter&) = delete;
   SharedAwaiter& operator=(const SharedAwaiter&) = delete;

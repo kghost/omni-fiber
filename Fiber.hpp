@@ -19,8 +19,6 @@
 #include "FiberPromise.hpp"
 #include "SharedAwaiter.hpp"
 
-#include "shared.h"
-
 namespace Omni {
 namespace Fiber {
 
@@ -114,17 +112,17 @@ public:
   BOOST_DESCRIBE_NESTED_ENUM(State, NotStart, Running, Suspending, Suspended, Yielding, Yielded, Ready, Finishing,
                              Finished);
 
-  OMNIFIBER_API const std::string& GetName() const { return _Name; }
-  OMNIFIBER_API Manager& GetManager() { return _Manager; }
-  OMNIFIBER_API bool IsFinished() { return _State == State::Finished; }
-  OMNIFIBER_API void Schedule();
+  const std::string& GetName() const { return _Name; }
+  Manager& GetManager() { return _Manager; }
+  bool IsFinished() { return _State == State::Finished; }
+  void Schedule();
 
-  OMNIFIBER_API AwaiterAlwaysSuspend<SharedAwaiter> ChildAwaitor();
-  OMNIFIBER_API Coroutine<void> Wait(std::function<bool()> until);
-  OMNIFIBER_API bool TryJoin(std::shared_ptr<Fiber> child);
-  OMNIFIBER_API Coroutine<void> Join(std::shared_ptr<Fiber> child);
-  OMNIFIBER_API Coroutine<std::shared_ptr<Fiber>> WaitFor();
-  OMNIFIBER_API Coroutine<void> WaitAll();
+  AwaiterAlwaysSuspend<SharedAwaiter> ChildAwaitor();
+  Coroutine<void> Wait(std::function<bool()> until);
+  bool TryJoin(std::shared_ptr<Fiber> child);
+  Coroutine<void> Join(std::shared_ptr<Fiber> child);
+  Coroutine<std::shared_ptr<Fiber>> WaitFor();
+  Coroutine<void> WaitAll();
 
   void DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger, int indent);
 #ifndef NDEBUG
@@ -166,13 +164,13 @@ private:
   Fiber(Fiber&&) = delete;
   Fiber& operator=(Fiber&&) = delete;
 
-  OMNIFIBER_API void Suspend(std::coroutine_handle<> caller);
-  OMNIFIBER_API void OmniYield(std::coroutine_handle<> caller);
-  OMNIFIBER_API void Resume(); // Called by Manager to continue this fiber.
+  void Suspend(std::coroutine_handle<> caller);
+  void OmniYield(std::coroutine_handle<> caller);
+  void Resume(); // Called by Manager to continue this fiber.
 
-  OMNIFIBER_API void Starting(std::coroutine_handle<Fiber::FiberFrame::Promise> caller);
-  OMNIFIBER_API void Finishing();
-  OMNIFIBER_API void SetException(std::exception_ptr eptr);
+  void Starting(std::coroutine_handle<Fiber::FiberFrame::Promise> caller);
+  void Finishing();
+  void SetException(std::exception_ptr eptr);
   void OnChildFinished(Fiber& fiber);
 
   Manager& _Manager;
