@@ -2,8 +2,7 @@
 
 #include <coroutine>
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class Fiber;
 class Manager;
@@ -14,23 +13,21 @@ public:
   virtual ~FiberPromise() = default;
 
   FiberPromise(FiberPromise&) = delete;
-  FiberPromise& operator=(const FiberPromise&) = delete;
+  auto operator=(const FiberPromise&) -> FiberPromise& = delete;
   FiberPromise(FiberPromise&&) = delete;
-  FiberPromise& operator=(FiberPromise&&) = delete;
+  auto operator=(FiberPromise&&) -> FiberPromise& = delete;
 
-  virtual Fiber& GetFiber() = 0;
-  virtual std::coroutine_handle<> GetCoroutineHandle() noexcept = 0;
+  virtual auto GetFiber() -> Fiber& = 0;
+  virtual auto GetCoroutineHandle() noexcept -> std::coroutine_handle<> = 0;
 
 #ifndef NDEBUG
-public:
-  void SetInstructionPointer(void* ip) noexcept { _InstructionPointer = ip; }
-  void* GetInstructionPointer() const noexcept { return _InstructionPointer; }
-  virtual FiberPromise* GetCallerPromise() const noexcept { return nullptr; }
+  void SetInstructionPointer(void* instructionPointer) noexcept { _InstructionPointer = instructionPointer; }
+  [[nodiscard]] auto GetInstructionPointer() const noexcept -> void* { return _InstructionPointer; }
+  [[nodiscard]] virtual auto GetCallerPromise() const noexcept -> FiberPromise* { return nullptr; }
 
 private:
   void* _InstructionPointer = nullptr;
 #endif
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

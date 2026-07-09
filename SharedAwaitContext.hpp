@@ -1,12 +1,12 @@
 #pragma once
 
 #include <cassert>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class Fiber;
 class SharedAwaiter;
@@ -19,15 +19,15 @@ class SharedAwaiter;
 // SharedAwaitContext to trigger the event by calling Fire() method.
 class SharedAwaitContext final {
 public:
-  explicit SharedAwaitContext() {}
+  explicit SharedAwaitContext() = default;
   ~SharedAwaitContext() {
     assert(_PendingSet.empty() && "SharedAwaitContext destroyed while there are still pending fibers");
   }
 
   SharedAwaitContext(SharedAwaitContext&) = delete;
-  SharedAwaitContext& operator=(SharedAwaitContext&) = delete;
+  auto operator=(SharedAwaitContext&) -> SharedAwaitContext& = delete;
   SharedAwaitContext(SharedAwaitContext&&) = delete;
-  SharedAwaitContext& operator=(SharedAwaitContext&&) = delete;
+  auto operator=(SharedAwaitContext&&) -> SharedAwaitContext& = delete;
 
   void AddFiberAwaitable(SharedAwaiter& awaitable);
   void RemoveFiberAwaitable(SharedAwaiter& awaitable);
@@ -35,17 +35,17 @@ public:
 
 private:
   struct AddressCompare {
-    bool operator()(std::reference_wrapper<SharedAwaiter> lhs, std::reference_wrapper<SharedAwaiter> rhs) const {
+    auto operator()(std::reference_wrapper<SharedAwaiter> lhs, std::reference_wrapper<SharedAwaiter> rhs) const
+        -> bool {
       return std::less<const SharedAwaiter*>{}(std::addressof(lhs.get()), std::addressof(rhs.get()));
     }
   };
 
-  enum class FiberAwaitableState {
+  enum class FiberAwaitableState : std::uint8_t {
     Waiting, // The fiber is waiting for the event to be triggered, and the awaitable is in the pending set.
     Notified // The event has been triggered, the fiber has been resumed, but the awaitable has not been destroyed
   };
   std::map<std::reference_wrapper<SharedAwaiter>, FiberAwaitableState, AddressCompare> _PendingSet;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

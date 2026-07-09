@@ -2,12 +2,8 @@
 
 #include <string>
 
-namespace Omni {
-namespace Fiber {
-
+namespace Omni::Fiber {
 #ifndef NDEBUG
-std::string ResolveSymbol(void* address);
+auto ResolveSymbol(void* address) -> std::string;
 #endif
-
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

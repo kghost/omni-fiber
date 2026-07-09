@@ -14,31 +14,32 @@
 
 #include "FiberPromise.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 #ifndef NDEBUG
-void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, std::exception_ptr eptr);
+void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, const std::exception_ptr& eptr);
 #endif
 
 template <typename RetType> class [[nodiscard]] Coroutine {
 private:
   template <typename Impl> class PromiseBase : public FiberPromise {
   public:
-    Fiber& GetFiber() override { return _CallerPromise.value().get().GetFiber(); }
+    auto GetFiber() -> Fiber& override { return _CallerPromise.value().get().GetFiber(); }
 
 #ifndef NDEBUG
-    FiberPromise* GetCallerPromise() const noexcept override {
+    [[nodiscard]] auto GetCallerPromise() const noexcept -> FiberPromise* override {
       return _CallerPromise.has_value() ? &_CallerPromise.value().get() : nullptr;
     }
 #endif
 
-    Coroutine get_return_object(this Impl& self) { return Coroutine{std::coroutine_handle<Impl>::from_promise(self)}; }
-    std::suspend_always initial_suspend() const noexcept { return {}; }
+    auto get_return_object(this Impl& self) -> Coroutine {
+      return Coroutine{std::coroutine_handle<Impl>::from_promise(self)};
+    }
+    [[nodiscard]] auto initial_suspend() const noexcept -> std::suspend_always { return {}; }
     auto final_suspend() noexcept {
       struct FinalAwaiter {
-        bool await_ready() noexcept { return false; }
-        std::coroutine_handle<> await_suspend(std::coroutine_handle<Impl> self) noexcept {
+        auto await_ready() noexcept -> bool { return false; }
+        auto await_suspend(std::coroutine_handle<Impl> self) noexcept -> std::coroutine_handle<> {
           assert(self.promise()._CallerPromise.has_value());
           return self.promise()._CallerPromise.value().get().GetCoroutineHandle();
         }
@@ -46,25 +47,27 @@ private:
       };
       return FinalAwaiter{};
     }
-    void unhandled_exception(this Impl& self
+    void unhandled_exception(
+        this Impl& self
 #ifndef NDEBUG
 #if __has_include(<stacktrace>)
-                             ,
-                             void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+        ,
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
+        void* instructionPointer = reinterpret_cast<void*>(std::stacktrace::current(0, 1).at(0).native_handle())
 #endif
 #endif
     ) {
       self._RetState = std::unexpected(std::current_exception());
 #ifndef NDEBUG
 #if __has_include(<stacktrace>)
-      self.SetInstructionPointer(ip);
+      self.SetInstructionPointer(instructionPointer);
 #else
       self.SetInstructionPointer(__builtin_return_address(0));
 #endif
       DebugOutputFiberCallStack(self.GetFiber(), self, self._RetState.value().error());
 #endif
     }
-    bool IsFinished() const noexcept { return _RetState.has_value(); }
+    [[nodiscard]] auto IsFinished() const noexcept -> bool { return _RetState.has_value(); }
 
   protected:
     std::optional<std::expected<RetType, std::exception_ptr>> _RetState;
@@ -73,7 +76,7 @@ private:
 
   class PromiseVoid final : public PromiseBase<PromiseVoid> {
   public:
-    std::coroutine_handle<> GetCoroutineHandle() noexcept override {
+    auto GetCoroutineHandle() noexcept -> std::coroutine_handle<> override {
       return std::coroutine_handle<PromiseVoid>::from_promise(*this);
     }
     void return_void() { this->_RetState.emplace(); }
@@ -82,7 +85,7 @@ private:
 
   class PromiseNonVoid final : public PromiseBase<PromiseNonVoid> {
   public:
-    std::coroutine_handle<> GetCoroutineHandle() noexcept override {
+    auto GetCoroutineHandle() noexcept -> std::coroutine_handle<> override {
       return std::coroutine_handle<PromiseNonVoid>::from_promise(*this);
     }
     template <typename T> void return_value(T&& ret) {
@@ -93,7 +96,7 @@ private:
 
 public:
   using CoroutineReturnType = RetType;
-  using promise_type = std::conditional<std::is_void_v<RetType>, PromiseVoid, PromiseNonVoid>::type;
+  using promise_type = std::conditional_t<std::is_void_v<RetType>, PromiseVoid, PromiseNonVoid>;
   explicit Coroutine(std::coroutine_handle<promise_type> callee) : _Callee(callee) {}
   ~Coroutine() {
     assert(_Callee.promise().IsFinished() && "you probably forgot to co_await a Coroutine.");
@@ -101,34 +104,36 @@ public:
   }
 
   Coroutine(const Coroutine&) = delete;
-  Coroutine& operator=(const Coroutine&) = delete;
+  auto operator=(const Coroutine&) -> Coroutine& = delete;
   Coroutine(const Coroutine&&) = delete;
-  Coroutine& operator=(const Coroutine&&) = delete;
+  auto operator=(const Coroutine&&) -> Coroutine& = delete;
 
-  Coroutine& operator co_await() { return *this; }
+  auto operator co_await() -> Coroutine& { return *this; }
 
-  bool await_ready() const noexcept { return _Callee.promise().IsFinished(); }
+  [[nodiscard]] auto await_ready() const noexcept -> bool { return _Callee.promise().IsFinished(); }
   template <typename T>
-  std::coroutine_handle<> await_suspend(std::coroutine_handle<T> caller
+  auto
+  await_suspend(std::coroutine_handle<T> caller
 #ifndef NDEBUG
 #if __has_include(<stacktrace>)
-                                        ,
-                                        void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+                ,
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
+                void* instructionPointer = reinterpret_cast<void*>(std::stacktrace::current(0, 1).at(0).native_handle())
 #endif
 #endif
-                                            ) noexcept {
+                    ) noexcept -> std::coroutine_handle<> {
     promise_type& promise = _Callee.promise();
     promise._CallerPromise.emplace(caller.promise());
 #ifndef NDEBUG
 #if __has_include(<stacktrace>)
-    caller.promise().SetInstructionPointer(ip);
+    caller.promise().SetInstructionPointer(instructionPointer);
 #else
     caller.promise().SetInstructionPointer(__builtin_return_address(0));
 #endif
 #endif
     return _Callee;
   }
-  RetType await_resume() {
+  auto await_resume() -> RetType {
     promise_type& promise = _Callee.promise();
     auto& ret = promise._RetState.value();
     if (ret.has_value()) {
@@ -153,5 +158,4 @@ template <typename Arg> struct CoroutineTraits<Coroutine<Arg>> : std::true_type 
   using CoroutineReturnTypeOrOriginalType = typename Coroutine<Arg>::CoroutineReturnType;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

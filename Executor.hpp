@@ -1,7 +1,6 @@
 #pragma once
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class Manager;
 
@@ -18,5 +17,4 @@ public:
   virtual void Post(Manager& manager) = 0;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

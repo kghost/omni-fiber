@@ -4,11 +4,8 @@
 #include <optional>
 #include <string>
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
+auto ResolveSymbolDwfl(void* address) -> std::optional<std::string>;
+} // namespace Omni::Fiber
 
-std::optional<std::string> ResolveSymbolDwfl(void* address);
-
-} // namespace Fiber
-} // namespace Omni
 #endif

@@ -9,8 +9,7 @@
 #include "AwaiterBase.hpp"
 #include "Coroutine.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 template <typename Awaitable, typename Callback> class SelectPairList {
 public:
@@ -40,7 +39,7 @@ public:
       }
     }
 
-    bool await_ready() const {
+    auto await_ready() const -> bool {
       for (auto& awaiter : _awaiters) {
         if (awaiter->await_ready()) {
           return true;
@@ -62,7 +61,7 @@ public:
       OnAwaitSuspend();
     }
 
-    std::vector<UnderlyingAwaiterResultExpectedType> await_resume() {
+    auto await_resume() -> std::vector<UnderlyingAwaiterResultExpectedType> {
       std::vector<UnderlyingAwaiterResultExpectedType> results;
       results.reserve(_awaiters.size());
       for (auto& awaiter : _awaiters) {
@@ -98,17 +97,17 @@ public:
 
   explicit SelectPairList() = default;
 
-  bool Empty() const { return _pairs.empty(); }
+  [[nodiscard]] auto Empty() const -> bool { return _pairs.empty(); }
 
-  void Add(Awaitable&& awaitable, Callback&& callback) {
-    _pairs.push_back(Pair{std::forward<Awaitable>(awaitable), std::forward<Callback>(callback)});
+  void Add(auto&& awaitable, auto&& callback) {
+    _pairs.push_back(Pair{std::forward<decltype(awaitable)>(awaitable), std::forward<decltype(callback)>(callback)});
   }
 
-  ListAwaiter operator co_await() { return ListAwaiter(_pairs); }
+  auto operator co_await() -> ListAwaiter { return ListAwaiter(_pairs); }
 
   operator Awaiter() { return ListAwaiter(_pairs); }
 
-  Coroutine<ResultType> RunCallback(AwaiterResultExpectedType& results) {
+  auto RunCallback(AwaiterResultExpectedType& results) -> Coroutine<ResultType> {
     std::vector<SingleResultType> final_results;
     final_results.reserve(_pairs.size());
     for (size_t i = 0; i < _pairs.size(); ++i) {
@@ -120,7 +119,7 @@ public:
   }
 
 private:
-  static Coroutine<SingleResultType> RunPairCallback(Pair& pair, UnderlyingAwaiterResultExpectedType result) {
+  static auto RunPairCallback(Pair& pair, UnderlyingAwaiterResultExpectedType result) -> Coroutine<SingleResultType> {
     auto& callback = pair.second;
     if constexpr (std::is_void_v<AwaiterResultType>) {
       if (result.has_value()) {
@@ -167,5 +166,4 @@ private:
   std::vector<Pair> _pairs;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

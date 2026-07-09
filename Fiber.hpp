@@ -22,7 +22,6 @@
 namespace Omni::Fiber {
 
 class Manager;
-class SingleAwaiter;
 class SharedAwaitContext;
 
 class Fiber {
@@ -171,13 +170,12 @@ private:
     co_await function();
   }
 
+public:
   template <typename CoroutineFunction>
     requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
   Fiber(Manager& manager, std::string&& name, FiberFinishNotifier& notifier, CoroutineFunction&& function)
       : _Manager(manager), _Name(std::move(name)), _FinishNotifier(notifier), _ChildFiberFinishNotifier(*this),
         _OutMostFrame(SpawnFiber(*this, std::forward<CoroutineFunction>(function))) {}
-
-public:
   ~Fiber() = default;
 
   Fiber(const Fiber&) = delete;

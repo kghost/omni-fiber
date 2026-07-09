@@ -7,8 +7,7 @@
 #include "AwaiterBase.hpp"
 #include "Coroutine.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 template <typename Awaitable, typename Callback> struct SelectPairImpl {
   using AwaitableType = Awaitable&&;
@@ -34,7 +33,7 @@ template <typename Awaitable, typename Callback> struct SelectPairImpl {
 
   operator Awaiter() { return std::move(first).operator co_await(); }
 
-  Coroutine<ResultType> RunCallback(AwaiterResultExpectedType& result) {
+  auto RunCallback(AwaiterResultExpectedType& result) -> Coroutine<ResultType> {
     auto& callback = this->second;
     if constexpr (std::is_void_v<AwaiterResultType>) {
       if (result.has_value()) {
@@ -83,5 +82,4 @@ template <typename Awaitable, typename Callback> auto SelectPair(Awaitable&& awa
   return SelectPairImpl<Awaitable, Callback>{std::forward<Awaitable>(awaitable), std::forward<Callback>(callback)};
 }
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

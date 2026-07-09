@@ -171,7 +171,7 @@ template <typename... Results> struct async_result<Omni::Fiber::AsioUseFiberType
 
 ## 6. Synchronization & Multiplexing Primitives
 
-OmniFiber provides cooperative synchronization tools to coordinate independent fibers without blocking system threads. All awaitables delegate wait queue management to the centralized `SingleAwaiter` / `SharedAwaiter` framework rather than holding raw lists of suspended fibers.
+OmniFiber provides cooperative synchronization tools to coordinate independent fibers without blocking system threads. All awaitables delegate wait queue management to the centralized  `SharedAwaiter` framework rather than holding raw lists of suspended fibers.
 
 ### `Event<DataType = void>`
 A cooperative signal that supports both void and value-bearing states:

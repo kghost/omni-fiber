@@ -8,8 +8,7 @@
 #include <stacktrace>
 #endif
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class Fiber;
 class FiberPromise;
@@ -42,23 +41,25 @@ protected:
 
 public:
   AwaiterBase(const AwaiterBase&) = delete;
-  AwaiterBase& operator=(const AwaiterBase&) = delete;
+  auto operator=(const AwaiterBase&) -> AwaiterBase& = delete;
   AwaiterBase(AwaiterBase&&) = delete;
-  AwaiterBase& operator=(AwaiterBase&&) = delete;
+  auto operator=(AwaiterBase&&) -> AwaiterBase& = delete;
 
   using AwaiterBaseImpl = Suspender;
 
-  bool IsSuspended() const noexcept { return _OwnerFiber.has_value(); }
+  [[nodiscard]] auto IsSuspended() const noexcept -> bool { return _OwnerFiber.has_value(); }
   void SetOwnerPromise(Fiber& owner) { _OwnerFiber = owner; }
-  Fiber& GetOwnerPromise() const { return _OwnerFiber.value().get(); }
+  [[nodiscard]] auto GetOwnerPromise() const -> Fiber& { return _OwnerFiber.value().get(); }
   void Schedule() { Suspender::Schedule(_OwnerFiber.value().get()); }
 
   template <typename PromiseType>
-  void DoAwaitSuspend(std::coroutine_handle<PromiseType> caller
+  void DoAwaitSuspend(
+      std::coroutine_handle<PromiseType> caller
 #ifndef NDEBUG
 #if __has_include(<stacktrace>)
-                      ,
-                      void* ip = (void*)std::stacktrace::current().at(0).native_handle()
+      ,
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
+      void* instructionPointer = reinterpret_cast<void*>(std::stacktrace::current(0, 1).at(0).native_handle())
 #endif
 #endif
   ) {
@@ -66,7 +67,7 @@ public:
     _OwnerFiber = promise.GetFiber();
 #ifndef NDEBUG
 #if __has_include(<stacktrace>)
-    promise.SetInstructionPointer(ip);
+    promise.SetInstructionPointer(instructionPointer);
 #else
     promise.SetInstructionPointer(__builtin_return_address(0));
 #endif
@@ -79,5 +80,4 @@ private:
   std::optional<std::reference_wrapper<Fiber>> _OwnerFiber;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

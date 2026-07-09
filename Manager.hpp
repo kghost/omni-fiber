@@ -14,8 +14,7 @@
 #include "Fiber.hpp"
 #include "FiberFinishNotifier.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class Fiber;
 
@@ -25,9 +24,9 @@ public:
   ~Manager();
 
   Manager(const Manager&) = delete;
-  Manager& operator=(Manager&) = delete;
+  auto operator=(Manager&) -> Manager& = delete;
   Manager(Manager&&) = delete;
-  Manager& operator=(Manager&&) = delete;
+  auto operator=(Manager&&) -> Manager& = delete;
 
   void DumpAllFibers();
   void Schedule(Fiber& fiber); // Mark the fiber ready to be scheduled.
@@ -36,8 +35,8 @@ public:
   // Spawn the root fiber
   template <typename CoroutineFunction>
     requires std::is_invocable_r_v<Coroutine<void>, CoroutineFunction>
-  std::shared_ptr<Fiber> SpawnRoot(std::string&& name, CoroutineFunction&& function) {
-    _RootFiber.reset(new Fiber(*this, std::move(name), *this, std::forward<CoroutineFunction>(function)));
+  auto SpawnRoot(std::string&& name, CoroutineFunction&& function) -> std::shared_ptr<Fiber> {
+    _RootFiber = std::make_shared<Fiber>(*this, std::move(name), *this, std::forward<CoroutineFunction>(function));
     _RootFiber->Schedule();
     return _RootFiber;
   }
@@ -53,9 +52,9 @@ public:
     }
 
     Runner(const Runner&) = delete;
-    Runner& operator=(const Runner&) = delete;
+    auto operator=(const Runner&) -> Runner& = delete;
     Runner(Runner&& that) noexcept : _Manager(that._Manager) { that.Moved = true; }
-    Runner& operator=(Runner&&) = delete;
+    auto operator=(Runner&&) -> Runner& = delete;
 
     void operator()() {
       _Manager.Executing = true;
@@ -68,7 +67,7 @@ public:
     Manager& _Manager;
   };
 
-  Runner GetRunner() { return Runner(*this); }
+  auto GetRunner() -> Runner { return {*this}; }
 
   void OnFiberFinished(Fiber& fiber) override;
 
@@ -86,5 +85,4 @@ private:
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> Log;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

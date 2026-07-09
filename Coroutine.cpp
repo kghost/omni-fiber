@@ -9,11 +9,10 @@
 
 #include "Fiber.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 #ifndef NDEBUG
-void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, std::exception_ptr eptr) {
+void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, const std::exception_ptr& eptr) {
   fiber.SetSuspendedPromise(&promise);
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
   std::string exceptionInfo = "Unknown exception";
@@ -31,5 +30,4 @@ void DebugOutputFiberCallStack(Fiber& fiber, FiberPromise& promise, std::excepti
 }
 #endif
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

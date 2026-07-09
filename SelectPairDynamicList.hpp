@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <expected>
 #include <memory>
 #include <type_traits>
@@ -9,16 +10,22 @@
 #include "AwaiterBase.hpp"
 #include "Coroutine.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class ISelectablePair {
 public:
+  explicit ISelectablePair() = default;
   virtual ~ISelectablePair() = default;
+
+  ISelectablePair(const ISelectablePair&) = delete;
+  auto operator=(const ISelectablePair&) -> ISelectablePair& = delete;
+  ISelectablePair(ISelectablePair&&) = delete;
+  auto operator=(ISelectablePair&&) -> ISelectablePair& = delete;
+
   virtual void setup_awaiter() = 0;
-  virtual bool check_ready() = 0;
+  virtual auto check_ready() -> bool = 0;
   virtual void setup_suspend(Fiber& fiber) = 0;
-  virtual Coroutine<void> run_callback_if_ready() = 0;
+  virtual auto run_callback_if_ready() -> Coroutine<void> = 0;
 };
 
 template <typename Awaitable, typename Callback> class SelectablePairImpl : public ISelectablePair {
@@ -36,19 +43,20 @@ private:
   std::unique_ptr<Awaiter> _awaiter;
 
 public:
-  SelectablePairImpl(Awaitable&& awaitable, Callback&& callback)
-      : _awaitable(std::forward<Awaitable>(awaitable)), _callback(std::forward<Callback>(callback)) {}
+  SelectablePairImpl(auto&& awaitable, auto&& callback)
+      : _awaitable(std::forward<decltype(awaitable)>(awaitable)),
+        _callback(std::forward<decltype(callback)>(callback)) {}
 
   void setup_awaiter() override { _awaiter.reset(new Awaiter(std::move(_awaitable).operator co_await())); }
 
-  bool check_ready() override { return _awaiter->await_ready(); }
+  auto check_ready() -> bool override { return _awaiter->await_ready(); }
 
   void setup_suspend(Fiber& fiber) override {
     _awaiter->SetOwnerPromise(fiber);
     _awaiter->OnAwaitSuspend();
   }
 
-  Coroutine<void> run_callback_if_ready() override {
+  auto run_callback_if_ready() -> Coroutine<void> override {
     AwaiterResultExpectedType result;
     if (_awaiter->await_ready()) {
       if constexpr (std::is_void_v<AwaiterResultType>) {
@@ -96,16 +104,11 @@ public:
     SelectPairDynamicList& _list;
     explicit ListAwaiter(SelectPairDynamicList& list) : _list(list) {}
 
-    bool await_ready() const {
+    [[nodiscard]] auto await_ready() const -> bool {
       for (auto& pair : _list._pairs) {
         pair->setup_awaiter();
       }
-      for (auto& pair : _list._pairs) {
-        if (pair->check_ready()) {
-          return true;
-        }
-      }
-      return false;
+      return std::ranges::any_of(_list._pairs, [](auto& pair) -> auto { return pair->check_ready(); });
     }
 
     void OnAwaitSuspend() {
@@ -127,11 +130,11 @@ public:
   using AwaiterResultExpectedType = std::expected<void, typename AwaiterTraits<ListAwaiter>::AwaiterNotReady>;
   using ResultType = std::expected<void, typename AwaiterTraits<ListAwaiter>::AwaiterNotReady>;
 
-  ListAwaiter operator co_await() { return ListAwaiter(*this); }
+  auto operator co_await() -> ListAwaiter { return ListAwaiter(*this); }
 
   operator Awaiter() { return Awaiter(*this); }
 
-  Coroutine<ResultType> RunCallback(AwaiterResultExpectedType& result) {
+  auto RunCallback(AwaiterResultExpectedType& result) -> Coroutine<ResultType> {
     if (result.has_value()) {
       co_await DoSelect();
       co_return ResultType{};
@@ -140,7 +143,7 @@ public:
   }
 
 private:
-  Coroutine<void> DoSelect() {
+  auto DoSelect() -> Coroutine<void> {
     co_await *this;
     for (auto& pair : _pairs) {
       co_await pair->run_callback_if_ready();
@@ -150,5 +153,4 @@ private:
   std::vector<std::shared_ptr<ISelectablePair>> _pairs;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

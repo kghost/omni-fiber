@@ -3,21 +3,20 @@
 #include "Fiber.hpp"
 #include "SharedAwaitContext.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
-std::shared_ptr<SharedAwaitContext> SharedAwaiter::Get(ContextStorage& storage) {
-  if (auto handle = storage.lock()) {
+auto SharedAwaiter::Get(ContextStorage& context) -> std::shared_ptr<SharedAwaitContext> {
+  if (auto handle = context.lock()) {
     return handle;
   } else {
     auto newHandle = std::make_shared<SharedAwaitContext>();
-    storage = newHandle;
+    context = newHandle;
     return newHandle;
   }
 }
 
-void SharedAwaiter::Fire(ContextStorage& storage) {
-  if (auto handle = storage.lock()) {
+void SharedAwaiter::Fire(ContextStorage& context) {
+  if (auto handle = context.lock()) {
     handle->Fire();
   }
 }
@@ -32,5 +31,4 @@ SharedAwaiter::~SharedAwaiter() {
 
 void SharedAwaiter::OnAwaitSuspend() { _Context->AddFiberAwaitable(*this); }
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

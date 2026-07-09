@@ -3,8 +3,7 @@
 #include <exception>
 #include <memory>
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class Fiber;
 
@@ -14,5 +13,4 @@ public:
   std::exception_ptr _InnerException;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

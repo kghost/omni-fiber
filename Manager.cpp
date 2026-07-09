@@ -8,8 +8,7 @@
 #include "Fiber.hpp"
 #include "FiberException.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 Manager::Manager(Executor& executor) : _Executor(executor) {
   Log.add_attribute("Component", boost::log::attributes::constant<std::string>(
@@ -26,14 +25,14 @@ Manager::~Manager() {
 }
 
 void Manager::Schedule(Fiber& fiber) {
-  _ReadyQueue.push(fiber);
+  _ReadyQueue.emplace(fiber);
   if (!Executing && !Posted) {
     _Executor.Post(*this);
   }
 }
 
 void Manager::YieldSchedule(Fiber& fiber) {
-  _YieldQueue.push(fiber);
+  _YieldQueue.emplace(fiber);
   if (!Executing && !Posted) {
     _Executor.Post(*this);
   }
@@ -65,5 +64,4 @@ void Manager::OnFiberFinished(Fiber& /*unused*/) {
   BOOST_LOG_SEV(Log, boost::log::trivial::severity_level::debug) << "All Fiber Finished.";
 }
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

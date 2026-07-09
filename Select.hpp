@@ -10,8 +10,7 @@
 #include "Coroutine.hpp"
 #include "Tuple.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 template <typename... Awaitables> class SelectAwaiter : public AwaiterBase<FiberSuspender> {
 private:
@@ -24,13 +23,14 @@ public:
   explicit SelectAwaiter(Awaitables&... aAwaitables)
       : _Awaiters{{static_cast<typename Awaitables::Awaiter>(aAwaitables)}...} {}
 
-  bool await_ready() const {
-    return Apply([](const auto&... awaiter) { return (awaiter.await_ready() || ...); }, _Awaiters);
+  [[nodiscard]] auto await_ready() const -> bool {
+    return Apply([](const auto&... awaiter) -> auto { return (awaiter.await_ready() || ...); }, _Awaiters);
   }
 
   void OnAwaitSuspend() {
     auto& parent = this->GetOwnerPromise();
-    Apply([&](auto&... awaiter) { ((awaiter.SetOwnerPromise(parent), awaiter.OnAwaitSuspend()), ...); }, _Awaiters);
+    Apply([&](auto&... awaiter) -> auto { ((awaiter.SetOwnerPromise(parent), awaiter.OnAwaitSuspend()), ...); },
+          _Awaiters);
   }
 
   template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
@@ -38,7 +38,7 @@ public:
     OnAwaitSuspend();
   }
 
-  std::tuple<typename Awaitables::AwaiterResultExpectedType...> await_resume() {
+  auto await_resume() -> std::tuple<typename Awaitables::AwaiterResultExpectedType...> {
     auto resume = []<typename Awaiter>(Awaiter& awaiter) -> typename AwaiterTraits<Awaiter>::AwaiterResultExpectedType {
       if (awaiter.await_ready()) {
         if constexpr (std::is_void_v<decltype(awaiter.await_resume())>) {
@@ -52,7 +52,7 @@ public:
       }
     };
 
-    return [&]<size_t... Is>(std::index_sequence<Is...>) {
+    return [&]<size_t... Is>(std::index_sequence<Is...>) -> auto {
       return std::make_tuple(resume(Get<Is>(_Awaiters))...);
     }(std::index_sequence_for<Awaitables...>{});
   }
@@ -61,7 +61,7 @@ private:
   Tuple<typename Awaitables::Awaiter...> _Awaiters;
 };
 
-template <typename... Pairs> Coroutine<std::tuple<typename Pairs::ResultType...>> Select(Pairs... pairs) {
+template <typename... Pairs> auto Select(Pairs... pairs) -> Coroutine<std::tuple<typename Pairs::ResultType...>> {
   auto results = co_await SelectAwaiter<Pairs...>(pairs...);
 
   auto pairs_tuple = std::forward_as_tuple(pairs...);
@@ -75,5 +75,4 @@ template <typename... Pairs> Coroutine<std::tuple<typename Pairs::ResultType...>
   co_return final_results;
 }
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

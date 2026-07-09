@@ -1,7 +1,6 @@
 #pragma once
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 template <typename Target, typename BaseAwaitable> class AwaiterCustom final : public BaseAwaitable {
 public:
@@ -9,12 +8,16 @@ public:
       : BaseAwaitable(storage), _Target(target) {}
   ~AwaiterCustom() {}
 
-  bool await_ready() const noexcept { return _Target.AwaitReady(); }
-  decltype(auto) await_resume() { return _Target.AwaitValue(); }
+  AwaiterCustom(const AwaiterCustom&) = delete;
+  auto operator=(const AwaiterCustom&) -> AwaiterCustom& = delete;
+  AwaiterCustom(AwaiterCustom&&) = delete;
+  auto operator=(AwaiterCustom&&) -> AwaiterCustom& = delete;
+
+  [[nodiscard]] auto await_ready() const noexcept -> bool { return _Target.AwaitReady(); }
+  auto await_resume() -> decltype(auto) { return _Target.AwaitValue(); }
 
 private:
   Target& _Target;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

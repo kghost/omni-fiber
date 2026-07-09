@@ -9,8 +9,7 @@
 #include "MoveOnlyFunction.hpp"
 #include "Pipe.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class RemoteCall {
 public:
@@ -18,23 +17,29 @@ public:
   ~RemoteCall() { assert(_Pipe.IsClosed()); }
 
   RemoteCall(const RemoteCall&) = delete;
-  RemoteCall& operator=(const RemoteCall&) = delete;
+  auto operator=(const RemoteCall&) -> RemoteCall& = delete;
   RemoteCall(RemoteCall&&) = delete;
-  RemoteCall& operator=(RemoteCall&&) = delete;
+  auto operator=(RemoteCall&&) -> RemoteCall& = delete;
 
   class CallFailed {};
 
   template <typename Func, typename Reply = decltype(std::declval<Func>()())::CoroutineReturnType>
   Coroutine<std::expected<Reply, CallFailed>> Call(Func&& func) {
     struct CallGuard {
-      Event<std::expected<Reply, CallFailed>>& Ev;
-      bool Fired = false;
-      explicit CallGuard(Event<std::expected<Reply, CallFailed>>& ev) : Ev(ev) {}
+      explicit CallGuard(Event<std::expected<Reply, CallFailed>>& reply) : ReplyEvent(reply) {}
       ~CallGuard() {
         if (!Fired) {
-          Ev.Fire(std::unexpected<CallFailed>{CallFailed{}});
+          ReplyEvent.Fire(std::unexpected<CallFailed>{CallFailed{}});
         }
       }
+
+      CallGuard(const CallGuard&) = delete;
+      auto operator=(const CallGuard&) -> CallGuard& = delete;
+      CallGuard(CallGuard&&) = delete;
+      auto operator=(CallGuard&&) -> CallGuard& = delete;
+
+      Event<std::expected<Reply, CallFailed>>& ReplyEvent;
+      bool Fired = false;
     };
 
     Event<std::expected<Reply, CallFailed>> event;
@@ -60,22 +65,20 @@ public:
     }
   }
 
-  Coroutine<std::expected<void, CallFailed>> Shutdown() {
+  auto Shutdown() -> Coroutine<std::expected<void, CallFailed>> {
     co_return (co_await _Pipe.GetProducer().Shutdown()).transform_error([](PipeClosed) { return CallFailed{}; });
   }
   void DiscardAndClose() { _Pipe.GetConsumer().DiscardAndClose(); }
 
-  decltype(auto) GetServiceAwaitor() { return _Pipe.GetConsumer(); }
+  auto GetServiceAwaitor() -> decltype(auto) { return _Pipe.GetConsumer(); }
 
-  Coroutine<bool> ProcessOne() { co_return co_await HandleRequest(co_await _Pipe.GetConsumer()); }
-
-  Coroutine<void> Serve() {
-    while (co_await ProcessOne()) {
+  auto Serve() -> Coroutine<void> {
+    while (co_await HandleRequest(co_await _Pipe.GetConsumer())) {
       // Continue serving requests until closed
     }
   }
 
-  static Coroutine<bool> HandleRequest(std::expected<move_only_function<Coroutine<void>()>, PipeClosed>&& req) {
+  static auto HandleRequest(std::expected<move_only_function<Coroutine<void>()>, PipeClosed> req) -> Coroutine<bool> {
     if (req.has_value()) {
       co_await req.value()();
       co_return true;
@@ -88,5 +91,4 @@ private:
   Pipe<move_only_function<Coroutine<void>()>> _Pipe;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

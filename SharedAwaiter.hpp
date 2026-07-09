@@ -5,8 +5,7 @@
 #include "AwaiterBase.hpp"
 #include "SharedAwaitContext.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 // Awaitables that can be co_awaited by fibers. It should be placed as a temporary object in co_await expression, and
 // destroyed after the co_await expression is evaluated. Never hold it to an lvalue or a member variable.
@@ -21,12 +20,12 @@ protected:
   explicit SharedAwaiter(ContextStorage& context);
   ~SharedAwaiter();
 
-  SharedAwaiter(const SharedAwaiter&) = delete;
-  SharedAwaiter& operator=(const SharedAwaiter&) = delete;
-  SharedAwaiter(SharedAwaiter&&) = delete;
-  SharedAwaiter& operator=(SharedAwaiter&&) = delete;
-
 public:
+  SharedAwaiter(const SharedAwaiter&) = delete;
+  auto operator=(const SharedAwaiter&) -> SharedAwaiter& = delete;
+  SharedAwaiter(SharedAwaiter&&) = delete;
+  auto operator=(SharedAwaiter&&) -> SharedAwaiter& = delete;
+
   template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
     DoAwaitSuspend(caller);
     OnAwaitSuspend();
@@ -38,5 +37,4 @@ private:
   std::shared_ptr<SharedAwaitContext> _Context;
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

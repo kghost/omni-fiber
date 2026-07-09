@@ -7,22 +7,22 @@
 #include "AwaiterCustom.hpp"
 #include "SharedAwaiter.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 template <typename DataType> class Event final {
 public:
   explicit Event() = default;
+  ~Event() = default;
 
   Event(Event&) = delete;
-  Event& operator=(Event&) = delete;
+  auto operator=(Event&) -> Event& = delete;
   Event(Event&&) = delete;
-  Event& operator=(Event&&) = delete;
+  auto operator=(Event&&) -> Event& = delete;
 
   // ==== DataType == void
   template <typename U = DataType>
     requires(std::is_void_v<U>)
-  bool IsFired() const {
+  [[nodiscard]] auto IsFired() const -> bool {
     return _Data;
   }
 
@@ -35,7 +35,7 @@ public:
 
   template <typename U = DataType>
     requires(std::is_void_v<U>)
-  bool AwaitReady() const {
+  [[nodiscard]] auto AwaitReady() const -> bool {
     return _Data;
   }
 
@@ -46,13 +46,13 @@ public:
   // ==== DataType != void
   template <typename U = DataType>
     requires(!std::is_void_v<U>)
-  bool IsFired() const {
+  [[nodiscard]] auto IsFired() const -> bool {
     return _Data.has_value();
   }
 
   template <typename U = DataType>
     requires(!std::is_void_v<U>)
-  DataType Get() const {
+  auto Get() const -> DataType {
     return _Data.value();
   }
 
@@ -65,28 +65,28 @@ public:
 
   template <typename U = DataType>
     requires(!std::is_void_v<U>)
-  bool AwaitReady() const {
+  [[nodiscard]] auto AwaitReady() const -> bool {
     return _Data.has_value();
   }
 
   template <typename U = DataType>
     requires(!std::is_void_v<U> && std::copyable<DataType>)
-  DataType AwaitValue() {
+  auto AwaitValue() -> DataType {
     return _Data.value();
   }
 
   template <typename U = DataType>
     requires(!std::is_void_v<U> && !std::copyable<DataType> && std::movable<DataType>)
-  DataType AwaitValue() {
+  auto AwaitValue() -> DataType {
     return std::move(_Data.value());
   }
 
-  AwaiterCustom<Event, SharedAwaiter> operator co_await() {
+  auto operator co_await() -> AwaiterCustom<Event, SharedAwaiter> {
     return AwaiterCustom<Event, SharedAwaiter>(_AwaitContext, *this);
   }
 
 private:
-  std::conditional_t<std::is_void_v<DataType>, bool, std::optional<DataType>> InitializeData() {
+  auto InitializeData() -> std::conditional_t<std::is_void_v<DataType>, bool, std::optional<DataType>> {
     if constexpr (std::is_void_v<DataType>) {
       return false;
     } else {
@@ -98,5 +98,4 @@ private:
   std::conditional_t<std::is_void_v<DataType>, bool, std::optional<DataType>> _Data = InitializeData();
 };
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

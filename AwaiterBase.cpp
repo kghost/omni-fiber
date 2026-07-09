@@ -4,8 +4,7 @@
 
 #include "Fiber.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 void FiberActionBase::Schedule(Fiber& fiber) { fiber.Schedule(); }
 
@@ -16,5 +15,4 @@ void FiberActionBase::SetSuspendedPromise(Fiber& fiber, FiberPromise& promise) {
 void FiberSuspender::DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.Suspend(caller); }
 void FiberYielder::DoSuspend(Fiber& fiber, std::coroutine_handle<> caller) { fiber.OmniYield(caller); }
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber

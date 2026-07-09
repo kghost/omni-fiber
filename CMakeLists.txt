@@ -25,16 +25,9 @@ set(SOURCES
   Manager.cpp
   SharedAwaitContext.cpp
   SharedAwaiter.cpp
-  SingleAwaitContext.cpp
-  SingleAwaiter.cpp
   SymbolResolver.cpp
   SymbolResolverDwfl.cpp
 )
-
-# Windows-only source for DLL entry point
-if(WIN32)
-  list(APPEND SOURCES dllmain.cpp)
-endif()
 
 # Define the libraries (both standard and ASan)
 foreach(suffix "" "-asan")
