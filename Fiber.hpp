@@ -39,12 +39,12 @@ private:
       Promise(Promise&&) = delete;
       auto operator=(Promise&&) -> Promise& = delete;
 
-      Fiber& GetFiber() override { return _Fiber; }
-      std::coroutine_handle<> GetCoroutineHandle() noexcept override {
+      auto GetFiber() -> Fiber& override { return _Fiber; }
+      auto GetCoroutineHandle() noexcept -> std::coroutine_handle<> override {
         return std::coroutine_handle<Promise>::from_promise(*this);
       }
 
-      auto initial_suspend() const noexcept {
+      [[nodiscard]] auto initial_suspend() const noexcept {
         class Awaitor {
         public:
           Awaitor(Fiber& owner) : _Fiber(owner) {}
@@ -73,7 +73,9 @@ private:
       }
 
       void unhandled_exception() { _Fiber.SetException(std::current_exception()); }
-      FiberFrame get_return_object() { return FiberFrame(std::coroutine_handle<promise_type>::from_promise(*this)); }
+      auto get_return_object() -> FiberFrame {
+        return FiberFrame(std::coroutine_handle<promise_type>::from_promise(*this));
+      }
       void return_void() {}
 
     private:
@@ -190,7 +192,7 @@ private:
 
   void Starting(std::coroutine_handle<Fiber::FiberFrame::Promise> caller);
   void Finishing();
-  void SetException(std::exception_ptr eptr);
+  void SetException(const std::exception_ptr& eptr);
   void OnChildFinished(Fiber& child);
 
   Manager& _Manager;
@@ -199,14 +201,8 @@ private:
   ChildFiberFinishNotifier _ChildFiberFinishNotifier;
 
   State _State = State::NotStart;
-
-  // Continuation state
   std::optional<std::coroutine_handle<>> _Continuation;
-
-  // Reture state
   std::optional<std::exception_ptr> _Exception;
-
-  // This field must initialized later than _Continuation, becasue _Continuation is wroten when initializing Frame
   FiberFrame _OutMostFrame;
 
   // Children management.

@@ -139,7 +139,7 @@ void Fiber::Finishing() {
   _State = State::Finishing;
 }
 
-void Fiber::SetException(std::exception_ptr eptr) {
+void Fiber::SetException(const std::exception_ptr& eptr) {
   assert(_State == State::Running);
   assert(_Children.empty());
   _Exception.emplace(eptr);
