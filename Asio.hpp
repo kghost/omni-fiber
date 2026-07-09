@@ -10,20 +10,20 @@
 #include "Fiber.hpp"
 #include "Manager.hpp"
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 class AsioUseFiberType {};
 inline constexpr const AsioUseFiberType AsioUseFiber;
 
 class AsioExecutor : public Executor {
 public:
-  explicit AsioExecutor(boost::asio::any_io_executor executor) : Executor(), _Executor(executor) {}
+  explicit AsioExecutor(boost::asio::any_io_executor executor) : _Executor(std::move(executor)) {}
+  ~AsioExecutor() = default;
 
   AsioExecutor(AsioExecutor&) = delete;
-  AsioExecutor& operator=(AsioExecutor&) = delete;
+  auto operator=(AsioExecutor&) -> AsioExecutor& = delete;
   AsioExecutor(AsioExecutor&&) = delete;
-  AsioExecutor& operator=(AsioExecutor&&) = delete;
+  auto operator=(AsioExecutor&&) -> AsioExecutor& = delete;
 
   void Post(Manager& manager) override { boost::asio::post(_Executor, manager.GetRunner()); }
 
@@ -34,11 +34,12 @@ private:
 template <typename... Results> class AsioResult {
 public:
   explicit AsioResult() : _Event(std::make_shared<Event<std::tuple<Results...>>>()) {}
+  ~AsioResult() = default;
 
   AsioResult(const AsioResult&) = default;
-  AsioResult& operator=(const AsioResult&) = default;
+  auto operator=(const AsioResult&) -> AsioResult& = default;
   AsioResult(AsioResult&& other) noexcept : _Event(std::move(other._Event)) {}
-  AsioResult& operator=(AsioResult&& other) noexcept {
+  auto operator=(AsioResult&& other) noexcept -> AsioResult& {
     if (this != &other) {
       _Event = std::move(other._Event);
     }
@@ -48,34 +49,30 @@ public:
   template <typename... Args> void operator()(Args&&... args) const {
     _Event->Fire(std::make_tuple(std::forward<Args>(args)...));
   }
-  decltype(auto) operator co_await() { return _Event->operator co_await(); }
+  auto operator co_await() -> decltype(auto) { return _Event->operator co_await(); }
 
 private:
   std::shared_ptr<Event<std::tuple<Results...>>> _Event;
 };
 
-template <typename Function> decltype(auto) AsioApply(Function&& func) {
+template <typename Function> auto AsioApply(Function&& func) -> decltype(auto) {
   return [func = std::forward<Function>(func)](auto&& args) -> decltype(auto) {
-    return std::apply(func, std::move(args));
+    return std::apply(func, std::forward<decltype(args)>(args));
   };
 }
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber
 
-namespace boost {
-namespace asio {
+namespace boost::asio {
 
 template <typename... Results> struct async_result<Omni::Fiber::AsioUseFiberType, void(Results...)> {
-  template <typename Initiation, typename... InitArgs>
-  static Omni::Fiber::AsioResult<Results...> initiate(Initiation&& initiation, Omni::Fiber::AsioUseFiberType,
-                                                      InitArgs&&... initArgs) {
+  static auto initiate(auto&& initiation, Omni::Fiber::AsioUseFiberType /*unused*/, auto&&... initArgs)
+      -> Omni::Fiber::AsioResult<Results...> {
     Omni::Fiber::AsioResult<Results...> result;
     // enforcing explicit copy semantics for result to be stored inside asio initiate
-    initiation(static_cast<decltype(result)>(result), std::forward<InitArgs>(initArgs)...);
+    initiation(static_cast<decltype(result)>(result), std::forward<decltype(initArgs)>(initArgs)...);
     return result;
   }
 };
 
-} // namespace asio
-} // namespace boost
+} // namespace boost::asio

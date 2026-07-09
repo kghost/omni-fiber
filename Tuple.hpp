@@ -15,22 +15,28 @@ template <size_t... Is, typename... Ts> struct TupleImpl<std::index_sequence<Is.
 
 template <typename... Ts> using Tuple = TupleImpl<std::index_sequence_for<Ts...>, Ts...>;
 
-template <size_t Index, typename T> T& Get(TupleLeaf<Index, T>& leaf) { return leaf.value; }
+template <size_t Index, typename T> auto Get(TupleLeaf<Index, T>& leaf) -> T& { return leaf.value; }
 
-template <size_t Index, typename T> const T& Get(const TupleLeaf<Index, T>& leaf) { return leaf.value; }
+template <size_t Index, typename T> auto Get(const TupleLeaf<Index, T>& leaf) -> const T& { return leaf.value; }
 
-template <typename F, typename Seq, typename... Ts> auto ApplyImpl(F&& f, TupleImpl<Seq, Ts...>& t) {
-  return [&]<size_t... Is>(std::index_sequence<Is...>) { return std::forward<F>(f)(Get<Is>(t)...); }(Seq{});
+template <typename Seq, typename... Ts> auto ApplyImpl(auto&& function, TupleImpl<Seq, Ts...>& tuple) {
+  return [&]<size_t... Is>(std::index_sequence<Is...>) -> auto {
+    return std::forward<decltype(function)>(function)(Get<Is>(tuple)...);
+  }(Seq{});
 }
 
-template <typename F, typename Seq, typename... Ts> auto ApplyImpl(F&& f, const TupleImpl<Seq, Ts...>& t) {
-  return [&]<size_t... Is>(std::index_sequence<Is...>) { return std::forward<F>(f)(Get<Is>(t)...); }(Seq{});
+template <typename Seq, typename... Ts> auto ApplyImpl(auto&& function, const TupleImpl<Seq, Ts...>& tuple) {
+  return [&]<size_t... Is>(std::index_sequence<Is...>) -> auto {
+    return std::forward<decltype(function)>(function)(Get<Is>(tuple)...);
+  }(Seq{});
 }
 
-template <typename F, typename... Ts> auto Apply(F&& f, Tuple<Ts...>& t) { return ApplyImpl(std::forward<F>(f), t); }
+template <typename... Ts> auto Apply(auto&& function, Tuple<Ts...>& tuple) {
+  return ApplyImpl(std::forward<decltype(function)>(function), tuple);
+}
 
-template <typename F, typename... Ts> auto Apply(F&& f, const Tuple<Ts...>& t) {
-  return ApplyImpl(std::forward<F>(f), t);
+template <typename... Ts> auto Apply(auto&& function, const Tuple<Ts...>& tuple) {
+  return ApplyImpl(std::forward<decltype(function)>(function), tuple);
 }
 
 } // namespace Omni::Fiber

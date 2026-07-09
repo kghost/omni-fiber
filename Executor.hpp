@@ -11,9 +11,9 @@ public:
   virtual ~Executor() = default;
 
   Executor(Executor&) = delete;
-  Executor& operator=(Executor&) = delete;
+  auto operator=(Executor&) -> Executor& = delete;
   Executor(Executor&&) = delete;
-  Executor& operator=(Executor&&) = delete;
+  auto operator=(Executor&&) -> Executor& = delete;
 
   virtual void Post(Manager& manager) = 0;
 };
