@@ -12,12 +12,8 @@ public:
   constexpr bool await_ready() const noexcept { return false; }
 
   template <typename PromiseType>
-  bool await_suspend(std::coroutine_handle<PromiseType> caller
-#ifndef NDEBUG
-                     ,
-                     void* ip = (void*)std::stacktrace::current().at(0).native_handle()
-#endif
-                         ) noexcept {
+  bool await_suspend(std::coroutine_handle<PromiseType> caller,
+                     void* ip = (void*)std::stacktrace::current().at(0).native_handle()) noexcept {
     FiberPromise& promise = caller.promise();
     Fiber& fiber = promise.GetFiber();
     promise.SetInstructionPointer(ip);
@@ -38,12 +34,8 @@ public:
   constexpr bool await_ready() const noexcept { return false; }
 
   template <typename PromiseType>
-  bool await_suspend(std::coroutine_handle<PromiseType> caller
-#ifndef NDEBUG
-                     ,
-                     void* ip = (void*)std::stacktrace::current().at(0).native_handle()
-#endif
-                         ) noexcept {
+  bool await_suspend(std::coroutine_handle<PromiseType> caller,
+                     void* ip = (void*)std::stacktrace::current().at(0).native_handle()) noexcept {
     FiberPromise& promise = caller.promise();
     Fiber& fiber = promise.GetFiber();
     Manager& manager = fiber.GetManager();
