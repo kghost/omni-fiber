@@ -16,33 +16,32 @@
 #include "SymbolResolver.hpp"
 #endif
 
-namespace Omni {
-namespace Fiber {
+namespace Omni::Fiber {
 
 void Fiber::OnChildFinished(Fiber& child) {
-  auto it = _Children.find(child);
-  assert(it != _Children.end());
-  _FinishedChildren.insert(*it);
-  _Children.erase(it);
+  auto iterator = _Children.find(child);
+  assert(iterator != _Children.end());
+  _FinishedChildren.insert(*iterator);
+  _Children.erase(iterator);
   SharedAwaiter::Fire(_JoinAwaitContext);
 }
 
-AwaiterAlwaysSuspend<SharedAwaiter> Fiber::ChildAwaitor() {
+auto Fiber::ChildAwaitor() -> AwaiterAlwaysSuspend<SharedAwaiter> {
   return AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext);
 }
 
-Coroutine<void> Fiber::Wait(std::function<bool()> until) {
+auto Fiber::Wait(std::function<bool()> until) -> Coroutine<void> {
   assert(&co_await GetCurrentOmniFiber() == this);
   while (!until()) {
     co_await ChildAwaitor();
   }
 }
 
-bool Fiber::TryJoin(std::shared_ptr<Fiber> child) {
+auto Fiber::TryJoin(const std::shared_ptr<Fiber>& child) -> bool {
   assert(_Children.contains(child) || _FinishedChildren.contains(child));
-  auto it = _FinishedChildren.find(child);
-  if (it != _FinishedChildren.end()) {
-    _FinishedChildren.erase(it);
+  auto iterator = _FinishedChildren.find(child);
+  if (iterator != _FinishedChildren.end()) {
+    _FinishedChildren.erase(iterator);
     if (child->_Exception.has_value()) {
       throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
     }
@@ -52,26 +51,26 @@ bool Fiber::TryJoin(std::shared_ptr<Fiber> child) {
   }
 }
 
-Coroutine<void> Fiber::Join(std::shared_ptr<Fiber> child) {
-  co_await Wait([&] { return _FinishedChildren.contains(child); });
+auto Fiber::Join(const std::shared_ptr<Fiber>& child) -> Coroutine<void> {
+  co_await Wait([&] -> bool { return _FinishedChildren.contains(child); });
   auto joined = TryJoin(child);
   assert(joined);
   co_return;
 }
 
-Coroutine<std::shared_ptr<Fiber>> Fiber::WaitFor() {
+auto Fiber::WaitFor() -> Coroutine<std::shared_ptr<Fiber>> {
   assert(!_Children.empty() || !_FinishedChildren.empty());
-  co_await Wait([&] { return !_FinishedChildren.empty(); });
-  auto it = _FinishedChildren.begin();
-  auto child = *it;
-  _FinishedChildren.erase(it);
+  co_await Wait([&] -> bool { return !_FinishedChildren.empty(); });
+  auto iterator = _FinishedChildren.begin();
+  auto child = *iterator;
+  _FinishedChildren.erase(iterator);
   if (child->_Exception.has_value()) {
     throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
   }
   co_return child;
 }
 
-Coroutine<void> Fiber::WaitAll() {
+auto Fiber::WaitAll() -> Coroutine<void> {
   while (!(_Children.empty() && _FinishedChildren.empty())) {
     co_await WaitFor();
   }
@@ -151,7 +150,7 @@ void Fiber::DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivi
                           int indent) {
   BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::debug) << std::string(indent, ' ') << *this;
   DumpCallStack(logger, indent + 4);
-  for (auto child : _Children) {
+  for (const auto& child : _Children) {
     child->DumpAllFibers(logger, indent + 2);
   }
 }
@@ -159,24 +158,23 @@ void Fiber::DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivi
 #ifndef NDEBUG
 void Fiber::DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger,
                           int indent) {
-  if (_SuspendedPromise) {
+  if (_SuspendedPromise != nullptr) {
     FiberPromise* current = _SuspendedPromise;
     int frameIdx = 0;
-    while (current) {
-      void* ip = current->GetInstructionPointer();
+    while (current != nullptr) {
+      void* instructionPointer = current->GetInstructionPointer();
       BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::debug)
-          << std::string(indent, ' ') << "#" << frameIdx++ << " " << ResolveSymbol(ip);
+          << std::string(indent, ' ') << "#" << frameIdx++ << " " << ResolveSymbol(instructionPointer);
       current = current->GetCallerPromise();
     }
   }
 }
 #endif
 
-boost::log::formatting_ostream& operator<<(boost::log::formatting_ostream& p, Fiber& fiber) {
-  p << "[Fiber " << fiber._Name << " @" << &fiber << " " << boost::describe::enum_to_string(fiber._State, "Unknown")
-    << "]";
-  return p;
+auto operator<<(boost::log::formatting_ostream& stream, Fiber& fiber) -> boost::log::formatting_ostream& {
+  stream << "[Fiber " << fiber._Name << " @" << &fiber << " "
+         << boost::describe::enum_to_string(fiber._State, "Unknown") << "]";
+  return stream;
 }
 
-} // namespace Fiber
-} // namespace Omni
+} // namespace Omni::Fiber
