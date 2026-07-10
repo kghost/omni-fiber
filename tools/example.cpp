@@ -13,7 +13,7 @@ using namespace Omni::Fiber;
 
 // A cooperative worker fiber that processes tasks from a shared queue.
 // It uses a "poison pill" pattern (task == -1) to know when to shut down.
-Coroutine<void> WorkerFiber(int id, boost::asio::any_io_executor executor, std::shared_ptr<EventQueue<int>> taskQueue) {
+auto WorkerFiber(int id, boost::asio::any_io_executor executor, std::shared_ptr<EventQueue<int>> taskQueue) -> Coroutine<void> {
   std::cout << "[Worker " << id << "] Fiber started. Awaiting tasks..." << std::endl;
 
   while (true) {
@@ -48,8 +48,8 @@ Coroutine<void> WorkerFiber(int id, boost::asio::any_io_executor executor, std::
 }
 
 // A cooperative producer fiber that generates tasks at intervals
-Coroutine<void> ProducerFiber(boost::asio::any_io_executor executor, std::shared_ptr<EventQueue<int>> taskQueue,
-                              int numWorkers) {
+auto ProducerFiber(boost::asio::any_io_executor executor, std::shared_ptr<EventQueue<int>> taskQueue,
+                              int numWorkers) -> Coroutine<void> {
   std::cout << "[Producer] Fiber started. Generating tasks..." << std::endl;
 
   for (int i = 1; i <= 5; ++i) {
@@ -69,7 +69,7 @@ Coroutine<void> ProducerFiber(boost::asio::any_io_executor executor, std::shared
   co_return;
 }
 
-int main() {
+auto main() -> int {
   std::cout << "=== OmniFiber Cooperative Task Queue Example ===" << std::endl;
 
   // Create the Boost.Asio event loop
@@ -89,13 +89,13 @@ int main() {
     std::cout << "[Root] Spawning fibers..." << std::endl;
 
     // Spawn three worker fibers
-    auto worker1 = current.Spawn("worker1", [&]() { return WorkerFiber(1, io.get_executor(), taskQueue); });
-    auto worker2 = current.Spawn("worker2", [&]() { return WorkerFiber(2, io.get_executor(), taskQueue); });
-    auto worker3 = current.Spawn("worker3", [&]() { return WorkerFiber(3, io.get_executor(), taskQueue); });
+    auto worker1 = current.Spawn("worker1", [&]() -> Coroutine<void> { return WorkerFiber(1, io.get_executor(), taskQueue); });
+    auto worker2 = current.Spawn("worker2", [&]() -> Coroutine<void> { return WorkerFiber(2, io.get_executor(), taskQueue); });
+    auto worker3 = current.Spawn("worker3", [&]() -> Coroutine<void> { return WorkerFiber(3, io.get_executor(), taskQueue); });
 
     // Spawn one producer fiber
     auto producer =
-        current.Spawn("producer", [&]() { return ProducerFiber(io.get_executor(), taskQueue, numWorkers); });
+        current.Spawn("producer", [&]() -> Coroutine<void> { return ProducerFiber(io.get_executor(), taskQueue, numWorkers); });
 
     // Wait cooperatively for the producer to finish generating all tasks
     co_await current.Join(producer);

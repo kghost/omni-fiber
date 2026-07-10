@@ -50,9 +50,9 @@ TEST(SelectPairDynamicListTest, MixedAwaitables) {
 
     auto consumer = pipe.GetConsumer();
     SelectPairDynamicList list;
-    list.Add(eventVoid, [&]() { sequence.push_back("void_callback"); });
-    list.Add(eventInt, [&](int val) { sequence.push_back("int_callback_" + std::to_string(val)); });
-    list.Add(consumer, [&](auto res) {
+    list.Add(eventVoid, [&]() -> void { sequence.push_back("void_callback"); });
+    list.Add(eventInt, [&](int val) -> void { sequence.push_back("int_callback_" + std::to_string(val)); });
+    list.Add(consumer, [&](auto res) -> auto {
       if (res.has_value()) {
         sequence.push_back("pipe_callback_" + res.value());
       }
@@ -148,8 +148,8 @@ TEST(SelectPairDynamicListTest, RaiiCancellation) {
     {
       auto consumer = pipe.GetConsumer();
       SelectPairDynamicList list;
-      list.Add(eventVoid, []() {});
-      list.Add(consumer, [](auto) {});
+      list.Add(eventVoid, []() -> void {});
+      list.Add(consumer, [](auto) -> auto {});
       co_await Select(list);
     } // list is destroyed here, and pipe consumer must be cancelled
 
@@ -186,13 +186,13 @@ TEST(SelectPairDynamicListTest, UsedDirectlyInsideSelectMixed) {
     });
 
     SelectPairDynamicList list;
-    list.Add(event1, [&sequence]() { sequence.push_back("callback_event1"); });
-    list.Add(event2, [&sequence]() { sequence.push_back("callback_event2"); });
+    list.Add(event1, [&sequence]() -> void { sequence.push_back("callback_event1"); });
+    list.Add(event2, [&sequence]() -> void { sequence.push_back("callback_event2"); });
 
     sequence.push_back("select_start");
 
     auto [list_result, event3_result] =
-        co_await Select(list, SelectPair(event3, [&]() { sequence.push_back("callback_event3"); }));
+        co_await Select(list, SelectPair(event3, [&]() -> void { sequence.push_back("callback_event3"); }));
 
     sequence.push_back("select_done");
 

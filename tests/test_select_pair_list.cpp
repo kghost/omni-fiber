@@ -48,11 +48,11 @@ TEST(SelectPairListTest, SingleEventCompletes) {
     });
 
     SelectPairList<Event<void>&, std::function<void()>> list;
-    list.Add(event1, [&triggered_indices]() { triggered_indices.push_back(0); });
-    list.Add(event2, [&triggered_indices]() { triggered_indices.push_back(1); });
-    list.Add(event3, [&triggered_indices]() { triggered_indices.push_back(2); });
-    list.Add(event4, [&triggered_indices]() { triggered_indices.push_back(3); });
-    list.Add(event5, [&triggered_indices]() { triggered_indices.push_back(4); });
+    list.Add(event1, [&triggered_indices]() -> void { triggered_indices.push_back(0); });
+    list.Add(event2, [&triggered_indices]() -> void { triggered_indices.push_back(1); });
+    list.Add(event3, [&triggered_indices]() -> void { triggered_indices.push_back(2); });
+    list.Add(event4, [&triggered_indices]() -> void { triggered_indices.push_back(3); });
+    list.Add(event5, [&triggered_indices]() -> void { triggered_indices.push_back(4); });
 
     auto [results] = co_await Select(list);
 
@@ -97,7 +97,7 @@ TEST(SelectPairListTest, MultipleSimultaneousEvents) {
 
     SelectPairList<Event<void>&, std::function<void()>> list;
     for (size_t i = 0; i < events.size(); ++i) {
-      list.Add(*events[i], [&triggered_indices, i]() { triggered_indices.push_back(i); });
+      list.Add(*events[i], [&triggered_indices, i]() -> void { triggered_indices.push_back(i); });
     }
 
     co_await Select(list);
@@ -135,7 +135,7 @@ TEST(SelectPairListTest, RaiiCancellation) {
     {
       SelectPairList<Event<void>&, std::function<void()>> list;
       for (size_t i = 0; i < events.size(); ++i) {
-        list.Add(*events[i], []() {});
+        list.Add(*events[i], []() -> void {});
       }
       co_await Select(list);
     } // list is destroyed here, and awaiters for event1, event2 should be cancelled
@@ -215,19 +215,19 @@ TEST(SelectPairListTest, UsedInsideSelect) {
     });
 
     SelectPairList<Event<void>&, std::function<void()>> list;
-    list.Add(event1, [&sequence]() { sequence.push_back("callback_event1"); });
-    list.Add(event2, [&sequence]() { sequence.push_back("callback_event2"); });
+    list.Add(event1, [&sequence]() -> void { sequence.push_back("callback_event1"); });
+    list.Add(event2, [&sequence]() -> void { sequence.push_back("callback_event2"); });
 
     sequence.push_back("select_start");
 
     co_await Select(SelectPair(list,
-                               [&](auto results) {
+                               [&](auto results) -> auto {
                                  sequence.push_back("list_callback");
                                  EXPECT_EQ(results.size(), 2);
                                  EXPECT_FALSE(results[0].has_value());
                                  EXPECT_TRUE(results[1].has_value());
                                }),
-                    SelectPair(event3, [&]() { sequence.push_back("callback_event3"); }));
+                    SelectPair(event3, [&]() -> void { sequence.push_back("callback_event3"); }));
 
     sequence.push_back("select_done");
 
@@ -266,13 +266,13 @@ TEST(SelectPairListTest, UsedDirectlyInsideSelectMixed) {
     });
 
     SelectPairList<Event<void>&, std::function<void()>> list;
-    list.Add(event1, [&sequence]() { sequence.push_back("callback_event1"); });
-    list.Add(event2, [&sequence]() { sequence.push_back("callback_event2"); });
+    list.Add(event1, [&sequence]() -> void { sequence.push_back("callback_event1"); });
+    list.Add(event2, [&sequence]() -> void { sequence.push_back("callback_event2"); });
 
     sequence.push_back("select_start");
 
     auto [list_results, event3_result] =
-        co_await Select(list, SelectPair(event3, [&]() { sequence.push_back("callback_event3"); }));
+        co_await Select(list, SelectPair(event3, [&]() -> void { sequence.push_back("callback_event3"); }));
 
     sequence.push_back("select_done");
 

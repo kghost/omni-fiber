@@ -21,17 +21,17 @@ void RunEventLoop(boost::asio::io_context& io) {
   io.run();
 }
 
-Coroutine<void> Level3Exception() {
+auto Level3Exception() -> Coroutine<void> {
   throw std::runtime_error("Exception from deep coroutine stack");
   co_return;
 }
 
-Coroutine<void> Level2Exception() {
+auto Level2Exception() -> Coroutine<void> {
   co_await Level3Exception();
   co_return;
 }
 
-Coroutine<void> Level1Exception() {
+auto Level1Exception() -> Coroutine<void> {
   co_await Level2Exception();
   co_return;
 }

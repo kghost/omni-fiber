@@ -47,8 +47,8 @@ TEST(SelectTest, SingleEventCompletes) {
     });
 
     sequence.push_back("select_start");
-    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback1"); }),
-                    SelectPair(event2, [&]() { sequence.push_back("callback2"); }));
+    co_await Select(SelectPair(event1, [&]() -> void { sequence.push_back("callback1"); }),
+                    SelectPair(event2, [&]() -> void { sequence.push_back("callback2"); }));
     sequence.push_back("select_done");
 
     co_await current.Join(notifier);
@@ -85,8 +85,8 @@ TEST(SelectTest, MultipleSimultaneousEvents) {
     });
 
     sequence.push_back("select_start");
-    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback1"); }),
-                    SelectPair(event2, [&]() { sequence.push_back("callback2"); }));
+    co_await Select(SelectPair(event1, [&]() -> void { sequence.push_back("callback1"); }),
+                    SelectPair(event2, [&]() -> void { sequence.push_back("callback2"); }));
     sequence.push_back("select_done");
 
     co_await current.Join(notifier);
@@ -118,8 +118,8 @@ TEST(SelectTest, EarlyFiredEvents) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("select_start");
-    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback1"); }),
-                    SelectPair(event2, [&]() { sequence.push_back("callback2"); }));
+    co_await Select(SelectPair(event1, [&]() -> void { sequence.push_back("callback1"); }),
+                    SelectPair(event2, [&]() -> void { sequence.push_back("callback2"); }));
     sequence.push_back("select_done");
     co_return;
   });
@@ -151,8 +151,8 @@ TEST(SelectTest, HeterogeneousCallbackArguments) {
     });
 
     co_await Select(
-        SelectPair(event1, [&](int result) { sequence.push_back("callback1_val_" + std::to_string(result)); }),
-        SelectPair(event2, [&](const std::string& result) { sequence.push_back("callback2_val_" + result); }));
+        SelectPair(event1, [&](int result) -> void { sequence.push_back("callback1_val_" + std::to_string(result)); }),
+        SelectPair(event2, [&](const std::string& result) -> void { sequence.push_back("callback2_val_" + result); }));
 
     co_await current.Join(notifier);
     co_return;
@@ -183,8 +183,8 @@ TEST(SelectTest, CleanRaiiCancellation) {
       co_return;
     });
 
-    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback1"); }),
-                    SelectPair(event2, [&]() { sequence.push_back("callback2"); }));
+    co_await Select(SelectPair(event1, [&]() -> void { sequence.push_back("callback1"); }),
+                    SelectPair(event2, [&]() -> void { sequence.push_back("callback2"); }));
 
     co_await current.Join(notifier1);
     co_return;
@@ -216,7 +216,7 @@ TEST(SelectTest, PipeConsumerSelect) {
       co_return;
     });
 
-    co_await Select(SelectPair(pipe.GetConsumer(), [&](auto result) {
+    co_await Select(SelectPair(pipe.GetConsumer(), [&](auto result) -> auto {
       if (result.has_value()) {
         sequence.push_back("pipe_val_" + std::to_string(result.value()));
       }
@@ -251,7 +251,7 @@ TEST(SelectTest, PipeConsumerSelectTemporary) {
       co_return;
     });
 
-    co_await Select(SelectPair(pipe.GetConsumer(), [&](auto result) {
+    co_await Select(SelectPair(pipe.GetConsumer(), [&](auto result) -> auto {
       if (result.has_value()) {
         sequence.push_back("pipe_temp_val_" + std::to_string(result.value()));
       }
@@ -384,8 +384,8 @@ TEST(SelectTest, FiberEventAndAsioTimerTimerCompletesFirst) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("select_start");
-    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
-                    SelectPair(timer.async_wait(AsioUseFiber), AsioApply([&](auto ec) {
+    co_await Select(SelectPair(event1, [&]() -> void { sequence.push_back("callback_event"); }),
+                    SelectPair(timer.async_wait(AsioUseFiber), AsioApply([&](auto ec) -> auto {
                                  EXPECT_FALSE(ec);
                                  sequence.push_back("callback_timer triggered");
                                })));
@@ -423,9 +423,9 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventCompletesFirst) {
     });
 
     sequence.push_back("select_start");
-    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
+    co_await Select(SelectPair(event1, [&]() -> void { sequence.push_back("callback_event"); }),
                     SelectPair(timer.async_wait(AsioUseFiber),
-                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
+                               AsioApply([&](auto ec) -> auto { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
 
     timer.cancel();
@@ -457,9 +457,9 @@ TEST(SelectTest, FiberEventAndAsioTimerFiberEventEarlyFired) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("select_start");
-    co_await Select(SelectPair(event1, [&]() { sequence.push_back("callback_event"); }),
+    co_await Select(SelectPair(event1, [&]() -> void { sequence.push_back("callback_event"); }),
                     SelectPair(timer.async_wait(AsioUseFiber),
-                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
+                               AsioApply([&](auto ec) -> auto { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
     timer.cancel();
     co_return;
@@ -495,13 +495,13 @@ TEST(SelectTest, PipeAndAsioTimerPipeCompletesFirst) {
 
     sequence.push_back("select_start");
     co_await Select(SelectPair(pipe.GetConsumer(),
-                               [&](auto result) {
+                               [&](auto result) -> auto {
                                  if (result.has_value()) {
                                    sequence.push_back("callback_pipe_" + std::to_string(result.value()));
                                  }
                                }),
                     SelectPair(timer.async_wait(AsioUseFiber),
-                               AsioApply([&](auto ec) { sequence.push_back("callback_timer_" + ec.message()); })));
+                               AsioApply([&](auto ec) -> auto { sequence.push_back("callback_timer_" + ec.message()); })));
     sequence.push_back("select_done");
 
     timer.cancel();
@@ -533,12 +533,12 @@ TEST(SelectTest, PipeAndAsioTimerTimerCompletesFirst) {
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     sequence.push_back("select_start");
     co_await Select(SelectPair(consumer,
-                               [&](auto result) {
+                               [&](auto result) -> auto {
                                  if (result.has_value()) {
                                    sequence.push_back("callback_pipe_" + std::to_string(result.value()));
                                  }
                                }),
-                    SelectPair(timer.async_wait(AsioUseFiber), AsioApply([&](auto ec) {
+                    SelectPair(timer.async_wait(AsioUseFiber), AsioApply([&](auto ec) -> auto {
                                  EXPECT_FALSE(ec);
                                  sequence.push_back("callback_timer triggered");
                                })));

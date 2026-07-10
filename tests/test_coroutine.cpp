@@ -21,20 +21,20 @@ void RunEventLoop(boost::asio::io_context& io) {
 }
 
 // 1. Helper Coroutines for 3-Level Void Call Suite
-Coroutine<void> Level3Void(std::vector<std::string>& sequence) {
+auto Level3Void(std::vector<std::string>& sequence) -> Coroutine<void> {
   sequence.push_back("Level3Void: Start");
   sequence.push_back("Level3Void: End");
   co_return;
 }
 
-Coroutine<void> Level2Void(std::vector<std::string>& sequence) {
+auto Level2Void(std::vector<std::string>& sequence) -> Coroutine<void> {
   sequence.push_back("Level2Void: Start");
   co_await Level3Void(sequence);
   sequence.push_back("Level2Void: End");
   co_return;
 }
 
-Coroutine<void> Level1Void(std::vector<std::string>& sequence) {
+auto Level1Void(std::vector<std::string>& sequence) -> Coroutine<void> {
   sequence.push_back("Level1Void: Start");
   co_await Level2Void(sequence);
   sequence.push_back("Level1Void: End");
@@ -42,34 +42,34 @@ Coroutine<void> Level1Void(std::vector<std::string>& sequence) {
 }
 
 // 2. Helper Coroutines for 3-Level Value Propagation Suite
-Coroutine<int> Level3Value(int value) { co_return value * 2; }
+auto Level3Value(int value) -> Coroutine<int> { co_return value * 2; }
 
-Coroutine<int> Level2Value(int value) {
+auto Level2Value(int value) -> Coroutine<int> {
   int result = co_await Level3Value(value);
   co_return result + 10;
 }
 
-Coroutine<int> Level1Value(int value) {
+auto Level1Value(int value) -> Coroutine<int> {
   int result = co_await Level2Value(value);
   co_return result + 100;
 }
 
 // 3. Helper Coroutines for 3-Level Cooperative Suspension
-Coroutine<void> Level3Suspend(std::vector<std::string>& sequence, Event<void>& event) {
+auto Level3Suspend(std::vector<std::string>& sequence, Event<void>& event) -> Coroutine<void> {
   sequence.push_back("Level3Suspend: Awaiting event");
   co_await event;
   sequence.push_back("Level3Suspend: Event signaled");
   co_return;
 }
 
-Coroutine<void> Level2Suspend(std::vector<std::string>& sequence, Event<void>& event) {
+auto Level2Suspend(std::vector<std::string>& sequence, Event<void>& event) -> Coroutine<void> {
   sequence.push_back("Level2Suspend: Awaiting Level3");
   co_await Level3Suspend(sequence, event);
   sequence.push_back("Level2Suspend: Level3 returned");
   co_return;
 }
 
-Coroutine<void> Level1Suspend(std::vector<std::string>& sequence, Event<void>& event) {
+auto Level1Suspend(std::vector<std::string>& sequence, Event<void>& event) -> Coroutine<void> {
   sequence.push_back("Level1Suspend: Awaiting Level2");
   co_await Level2Suspend(sequence, event);
   sequence.push_back("Level1Suspend: Level2 returned");
@@ -77,7 +77,7 @@ Coroutine<void> Level1Suspend(std::vector<std::string>& sequence, Event<void>& e
 }
 
 // 4. Recursive Fibonacci Coroutine
-Coroutine<int> Fibonacci(int n) {
+auto Fibonacci(int n) -> Coroutine<int> {
   if (n <= 1) {
     co_return n;
   }
@@ -87,17 +87,17 @@ Coroutine<int> Fibonacci(int n) {
 }
 
 // 5. Helper Coroutines for 3-Level Exception Propagation
-Coroutine<void> Level3Exception() {
+auto Level3Exception() -> Coroutine<void> {
   throw std::runtime_error("Exception from Level3");
   co_return;
 }
 
-Coroutine<void> Level2Exception() {
+auto Level2Exception() -> Coroutine<void> {
   co_await Level3Exception();
   co_return;
 }
 
-Coroutine<void> Level1Exception(bool& caught) {
+auto Level1Exception(bool& caught) -> Coroutine<void> {
   try {
     co_await Level2Exception();
   } catch (const std::runtime_error& e) {

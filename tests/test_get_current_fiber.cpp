@@ -19,19 +19,19 @@ void RunEventLoop(boost::asio::io_context& io) {
   io.run();
 }
 
-Coroutine<void> NestedLevel3(Fiber& expectedFiber, bool& executed) {
+auto NestedLevel3(Fiber& expectedFiber, bool& executed) -> Coroutine<void> {
   Fiber& currentFiber = co_await GetCurrentOmniFiber();
   EXPECT_EQ(&currentFiber, &expectedFiber);
   executed = true;
   co_return;
 }
 
-Coroutine<void> NestedLevel2(Fiber& expectedFiber, bool& executed) {
+auto NestedLevel2(Fiber& expectedFiber, bool& executed) -> Coroutine<void> {
   co_await NestedLevel3(expectedFiber, executed);
   co_return;
 }
 
-Coroutine<void> NestedLevel1(Fiber& expectedFiber, bool& executed) {
+auto NestedLevel1(Fiber& expectedFiber, bool& executed) -> Coroutine<void> {
   co_await NestedLevel2(expectedFiber, executed);
   co_return;
 }

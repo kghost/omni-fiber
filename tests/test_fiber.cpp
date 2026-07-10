@@ -91,7 +91,7 @@ TEST(FiberTest, FiberJoin) {
 }
 
 // 3. Test Coroutine Return Values (non-void and void propagation)
-Coroutine<int> AsyncAdd(int a, int b) { co_return a + b; }
+auto AsyncAdd(int a, int b) -> Coroutine<int> { co_return a + b; }
 
 TEST(FiberTest, CoroutineReturnValue) {
   boost::asio::io_context io;
@@ -373,17 +373,17 @@ TEST(FiberTest, JoinInterleavedSignalLossBug) {
 
 // 11. Test Capture and Output of Fiber Callstack via Promise Chain
 #ifndef NDEBUG
-Coroutine<void> CallstackTrace_C(Event<void>& event) {
+auto CallstackTrace_C(Event<void>& event) -> Coroutine<void> {
   co_await event;
   co_return;
 }
 
-Coroutine<void> CallstackTrace_B(Event<void>& event) {
+auto CallstackTrace_B(Event<void>& event) -> Coroutine<void> {
   co_await CallstackTrace_C(event);
   co_return;
 }
 
-Coroutine<void> CallstackTrace_A(Event<void>& event) {
+auto CallstackTrace_A(Event<void>& event) -> Coroutine<void> {
   co_await CallstackTrace_B(event);
   co_return;
 }

@@ -24,8 +24,8 @@ void RunEventLoop(boost::asio::io_context& io) {
 template <typename CompletionToken>
 auto AsyncCustomOp(boost::asio::any_io_executor executor, int x, const std::string& y, CompletionToken&& token) {
   return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, int, std::string)>(
-      [](auto&& handler, boost::asio::any_io_executor executor, int x, std::string y) {
-        boost::asio::post(executor, [handler = std::move(handler), x, y = std::move(y)]() mutable {
+      [](auto&& handler, boost::asio::any_io_executor executor, int x, std::string y) -> auto {
+        boost::asio::post(executor, [handler = std::move(handler), x, y = std::move(y)]() mutable -> auto {
           handler(boost::system::error_code{}, x * 2, y + "_suffix");
         });
       },
