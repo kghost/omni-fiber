@@ -2,9 +2,13 @@
 
 #include <boost/format.hpp>
 #include <boost/log/attributes/constant.hpp>
+#include <boost/log/sources/severity_feature.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/trivial.hpp>
+#include <cassert>
+#include <string>
 
+#include "Executor.hpp"
 #include "Fiber.hpp"
 #include "FiberException.hpp"
 

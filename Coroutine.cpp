@@ -1,13 +1,15 @@
 #include "Coroutine.hpp"
-#include "FiberPromise.hpp"
 
-#ifndef NDEBUG
+#include <exception>
+#include <string>
+
 #include <boost/exception/diagnostic_information.hpp>
-#include <boost/log/common.hpp>
+#include <boost/log/sources/severity_feature.hpp>
+#include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/trivial.hpp>
-#endif
 
 #include "Fiber.hpp"
+#include "FiberPromise.hpp"
 
 namespace Omni::Fiber {
 

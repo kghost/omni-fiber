@@ -5,7 +5,7 @@ namespace Omni::Fiber {
 template <typename BaseAwaitable> class AwaiterAlwaysSuspend final : public BaseAwaitable {
 public:
   explicit AwaiterAlwaysSuspend(BaseAwaitable::ContextStorage& storage) : BaseAwaitable(storage) {}
-  ~AwaiterAlwaysSuspend() {}
+  ~AwaiterAlwaysSuspend() = default;
 
   AwaiterAlwaysSuspend(const AwaiterAlwaysSuspend&) = delete;
   auto operator=(const AwaiterAlwaysSuspend&) -> AwaiterAlwaysSuspend& = delete;

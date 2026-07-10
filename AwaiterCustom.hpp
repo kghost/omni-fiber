@@ -6,7 +6,7 @@ template <typename Target, typename BaseAwaitable> class AwaiterCustom final : p
 public:
   explicit AwaiterCustom(BaseAwaitable::ContextStorage& storage, Target& target)
       : BaseAwaitable(storage), _Target(target) {}
-  ~AwaiterCustom() {}
+  ~AwaiterCustom() = default;
 
   AwaiterCustom(const AwaiterCustom&) = delete;
   auto operator=(const AwaiterCustom&) -> AwaiterCustom& = delete;

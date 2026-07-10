@@ -8,7 +8,8 @@ namespace Omni::Fiber {
 
 class GetCurrentOmniFiber {
 public:
-  [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
+  // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+  [[nodiscard]] constexpr auto await_ready() noexcept -> bool { return false; }
 
   template <typename PromiseType> auto await_suspend(std::coroutine_handle<PromiseType> caller) noexcept -> bool {
     _Fiber = &caller.promise().GetFiber();

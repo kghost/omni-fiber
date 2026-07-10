@@ -13,7 +13,7 @@ class SharedAwaiter : public AwaiterBase<FiberSuspender> {
 public:
   using ContextStorage = std::weak_ptr<SharedAwaitContext>;
 
-  static std::shared_ptr<SharedAwaitContext> Get(ContextStorage& context);
+  static auto Get(ContextStorage& context) -> std::shared_ptr<SharedAwaitContext>;
   static void Fire(ContextStorage& context);
 
 protected:

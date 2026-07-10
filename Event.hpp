@@ -52,7 +52,7 @@ public:
 
   template <typename U = DataType>
     requires(!std::is_void_v<U>)
-  auto Get() const -> DataType {
+  [[nodiscard]] auto Get() const -> DataType {
     return _Data.value();
   }
 

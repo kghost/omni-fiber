@@ -2,7 +2,7 @@
 
 #include <version>
 
-#if defined(__cpp_lib_move_only_function)
+#ifdef __cpp_lib_move_only_function
 #include <functional>
 namespace Omni::Fiber {
 using std::move_only_function;

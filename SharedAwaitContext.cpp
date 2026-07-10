@@ -1,5 +1,7 @@
 #include "SharedAwaitContext.hpp"
 
+#include <cassert>
+
 #include "SharedAwaiter.hpp"
 
 namespace Omni::Fiber {

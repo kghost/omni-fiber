@@ -21,7 +21,7 @@ class Fiber;
 class Manager final : public FiberFinishNotifier {
 public:
   Manager(Executor& executor);
-  ~Manager();
+  ~Manager() override;
 
   Manager(const Manager&) = delete;
   auto operator=(Manager&) -> Manager& = delete;

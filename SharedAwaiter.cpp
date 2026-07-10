@@ -1,5 +1,7 @@
 #include "SharedAwaiter.hpp"
 
+#include <memory>
+
 #include "Fiber.hpp"
 #include "SharedAwaitContext.hpp"
 

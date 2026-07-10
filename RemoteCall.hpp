@@ -24,7 +24,7 @@ public:
   class CallFailed {};
 
   template <typename Func, typename Reply = decltype(std::declval<Func>()())::CoroutineReturnType>
-  Coroutine<std::expected<Reply, CallFailed>> Call(Func&& func) {
+  auto Call(Func&& func) -> Coroutine<std::expected<Reply, CallFailed>> {
     struct CallGuard {
       explicit CallGuard(Event<std::expected<Reply, CallFailed>>& reply) : ReplyEvent(reply) {}
       ~CallGuard() {
@@ -44,7 +44,7 @@ public:
 
     Event<std::expected<Reply, CallFailed>> event;
 
-    std::expected<void, PipeClosed> res =
+    auto res =
         co_await _Pipe.GetProducer().Put([func = std::forward<Func>(func), &event,
                                           guard = std::make_shared<CallGuard>(event)]() mutable -> Coroutine<void> {
           if constexpr (std::is_void_v<Reply>) {
@@ -66,7 +66,9 @@ public:
   }
 
   auto Shutdown() -> Coroutine<std::expected<void, CallFailed>> {
-    co_return (co_await _Pipe.GetProducer().Shutdown()).transform_error([](PipeClosed) { return CallFailed{}; });
+    co_return (co_await _Pipe.GetProducer().Shutdown()).transform_error([](PipeClosed) -> auto {
+      return CallFailed{};
+    });
   }
   void DiscardAndClose() { _Pipe.GetConsumer().DiscardAndClose(); }
 

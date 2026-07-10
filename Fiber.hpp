@@ -31,7 +31,7 @@ private:
     class Promise final : public FiberPromise {
     public:
       explicit Promise(Fiber& fiber, auto& /*unused*/) : _Fiber(fiber) {}
-      ~Promise() = default;
+      ~Promise() override = default;
 
       Promise(const Promise&) = delete;
       auto operator=(const Promise&) -> Promise& = delete;
@@ -152,7 +152,7 @@ private:
   class ChildFiberFinishNotifier : public FiberFinishNotifier {
   public:
     explicit ChildFiberFinishNotifier(Fiber& parent) : _Parent(parent) {}
-    ~ChildFiberFinishNotifier() override {}
+    ~ChildFiberFinishNotifier() override = default;
 
     ChildFiberFinishNotifier(const ChildFiberFinishNotifier&) = delete;
     auto operator=(const ChildFiberFinishNotifier&) -> ChildFiberFinishNotifier& = delete;
@@ -166,7 +166,8 @@ private:
   };
 
   // owner is used by FiberFrame::Promise constructor
-  template <typename CoroutineFunction> static FiberFrame SpawnFiber(Fiber& /*unused*/, CoroutineFunction function) {
+  template <typename CoroutineFunction>
+  static auto SpawnFiber(Fiber& /*unused*/, CoroutineFunction function) -> FiberFrame {
     co_await function();
   }
 

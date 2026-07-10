@@ -2,10 +2,15 @@
 
 #include <boost/describe/enum_to_string.hpp>
 #include <cassert>
+#include <coroutine>
+#include <exception>
+#include <functional>
+#include <memory>
 #include <optional>
 #include <utility>
 
 #include "AwaiterAlwaysSuspend.hpp"
+#include "Coroutine.hpp"
 #include "FiberException.hpp"
 #include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
@@ -159,7 +164,7 @@ void Fiber::DumpAllFibers(boost::log::sources::severity_logger<boost::log::trivi
 void Fiber::DumpCallStack(boost::log::sources::severity_logger<boost::log::trivial::severity_level>& logger,
                           int indent) {
   if (_SuspendedPromise != nullptr) {
-    FiberPromise* current = _SuspendedPromise;
+    const FiberPromise* current = _SuspendedPromise;
     int frameIdx = 0;
     while (current != nullptr) {
       void* instructionPointer = current->GetInstructionPointer();

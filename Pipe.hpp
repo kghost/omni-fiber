@@ -38,7 +38,7 @@ public:
     explicit Producer(Pipe& pipe) : _Pipe(pipe) {}
 
   public:
-    ~Producer() {}
+    ~Producer() = default;
     Producer(Producer&) = delete;
     auto operator=(Producer&) -> Producer& = delete;
     Producer(Producer&&) = delete;
@@ -76,7 +76,7 @@ public:
   class Consumer {
   public:
     explicit Consumer(Pipe& pipe) : _Pipe(pipe) {}
-    ~Consumer() {}
+    ~Consumer() = default;
 
     Consumer(Consumer&) = delete;
     auto operator=(Consumer&) -> Consumer& = delete;

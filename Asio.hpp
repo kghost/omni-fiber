@@ -18,7 +18,7 @@ inline constexpr const AsioUseFiberType AsioUseFiber;
 class AsioExecutor : public Executor {
 public:
   explicit AsioExecutor(boost::asio::any_io_executor executor) : _Executor(std::move(executor)) {}
-  ~AsioExecutor() = default;
+  ~AsioExecutor() override = default;
 
   AsioExecutor(AsioExecutor&) = delete;
   auto operator=(AsioExecutor&) -> AsioExecutor& = delete;
