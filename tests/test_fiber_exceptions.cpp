@@ -5,7 +5,6 @@
 
 #include "Asio.hpp"
 #include "Coroutine.hpp"
-#include "EventQueue.hpp"
 #include "Fiber.hpp"
 #include "FiberException.hpp"
 #include "GetCurrentOmniFiber.hpp"
