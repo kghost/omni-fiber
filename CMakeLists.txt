@@ -13,7 +13,7 @@ enable_testing()
 
 # Find dependencies
 # Boost is heavily used (Asio, Log, Format, etc.)
-find_package(Boost REQUIRED COMPONENTS log)
+find_package(Boost REQUIRED COMPONENTS log thread)
 find_package(PkgConfig REQUIRED)
 
 
@@ -31,6 +31,13 @@ set(SOURCES
 
 # Define the libraries (both standard and ASan)
 foreach(suffix "" "-asan")
+  if(suffix STREQUAL "-asan" AND SKIP_ASAN)
+    continue()
+  endif()
+  if(suffix STREQUAL "" AND SKIP_NON_ASAN)
+    continue()
+  endif()
+
   set(target "omni-fiber${suffix}")
   add_library(${target} STATIC ${SOURCES})
 
