@@ -13,6 +13,7 @@
 #include "Executor.hpp"
 #include "Fiber.hpp"
 #include "FiberFinishNotifier.hpp"
+#include "SymbolResolver.hpp"
 
 namespace Omni::Fiber {
 
@@ -71,6 +72,8 @@ public:
 
   void OnFiberFinished(Fiber& fiber) override;
 
+  auto GetSymbolResolver() -> SymbolResolver& { return _SymbolResolver; }
+
 private:
   void Run(); // Run until all fibers are not ready.
 
@@ -83,6 +86,7 @@ private:
   std::shared_ptr<Fiber> _RootFiber;
 
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> Log;
+  SymbolResolver _SymbolResolver;
 };
 
 } // namespace Omni::Fiber

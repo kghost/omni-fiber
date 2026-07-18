@@ -26,7 +26,9 @@ set(SOURCES
   SharedAwaitContext.cpp
   SharedAwaiter.cpp
   SymbolResolver.cpp
+  SymbolResolverDlAddr.cpp
   SymbolResolverDwfl.cpp
+  SymbolResolverWin32.cpp
 )
 
 # Define the libraries (both standard and ASan)
@@ -62,6 +64,10 @@ foreach(suffix "" "-asan")
     Boost::log
     Boost::thread
   )
+
+  if(WIN32)
+    target_link_libraries(${target} PRIVATE dbghelp)
+  endif()
 
   if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND NOT ANDROID)
     target_link_libraries(${target} PUBLIC stdc++exp)

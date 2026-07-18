@@ -1,46 +1,48 @@
 #include "SymbolResolver.hpp"
 
 #ifndef NDEBUG
-#if __has_include(<dlfcn.h>)
-#include <cxxabi.h>
-#include <dlfcn.h>
-#endif
 #include <sstream>
 
+#include "SymbolResolverDlAddr.hpp"
 #include "SymbolResolverDwfl.hpp"
+#include "SymbolResolverWin32.hpp"
+
+#endif
 
 namespace Omni::Fiber {
 
-auto ResolveSymbol(void* address) -> std::string {
+SymbolResolver::SymbolResolver() {
+#ifndef NDEBUG
+  if constexpr (SymbolResolverWin32::Enabled) {
+    _Impls.push_back(std::make_unique<SymbolResolverWin32>());
+  }
+  if constexpr (SymbolResolverDwfl::Enabled) {
+    _Impls.push_back(std::make_unique<SymbolResolverDwfl>());
+  }
+  if constexpr (SymbolResolverDlAddr::Enabled) {
+    _Impls.push_back(std::make_unique<SymbolResolverDlAddr>());
+  }
+#endif
+}
+
+#ifndef NDEBUG
+auto SymbolResolver::Resolve(void* address) -> std::string {
   if (address == nullptr) {
     return "nullptr";
   }
-  std::ostringstream oss;
-  oss << address;
 
-  if (auto str = ResolveSymbolDwfl(address); str.has_value()) {
-    oss << " (" << str.value() << ")";
-    return oss.str();
-  }
-
-#if __has_include(<dlfcn.h>)
-  // 2. Fallback to dladdr if DWARF resolution is not available or failed
-  Dl_info info;
-  if ((dladdr(address, &info) != 0) && (info.dli_sname != nullptr)) {
-    int status = 0;
-    char* demangled = abi::__cxa_demangle(info.dli_sname, nullptr, nullptr, &status);
-    if (status == 0 && (demangled != nullptr)) {
-      oss << " (" << demangled << ")";
-      std::free(demangled); // NOLINT(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
-    } else {
-      oss << " (" << info.dli_sname << ")";
+  for (auto& impl : _Impls) {
+    if (auto res = impl->Resolve(address); res.has_value()) {
+      std::ostringstream oss;
+      oss << address << " (" << res.value() << ")";
+      return oss.str();
     }
   }
-#endif
 
+  std::ostringstream oss;
+  oss << address;
   return oss.str();
 }
+#endif
 
 } // namespace Omni::Fiber
-
-#endif

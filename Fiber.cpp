@@ -169,7 +169,8 @@ void Fiber::DumpCallStack(boost::log::sources::severity_logger<boost::log::trivi
     while (current != nullptr) {
       void* instructionPointer = current->GetInstructionPointer();
       BOOST_LOG_SEV(logger, boost::log::trivial::severity_level::debug)
-          << std::string(indent, ' ') << "#" << frameIdx++ << " " << ResolveSymbol(instructionPointer);
+          << std::string(indent, ' ') << "#" << frameIdx++ << " "
+          << _Manager.GetSymbolResolver().Resolve(instructionPointer);
       current = current->GetCallerPromise();
     }
   }
