@@ -73,7 +73,7 @@ public:
 
 private:
   void Notify() {
-    boost::asio::post(_Executor, [context = _AwaitContext]() -> void {
+    boost::asio::post(_Executor, [context = _AwaitContext]() mutable -> void {
       SharedAwaiter::Fire(context);
     });
   }

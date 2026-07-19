@@ -504,6 +504,7 @@ TEST(FiberTest, ThreadSafeExternalQueue) {
 
   manager.SpawnRoot("root", [&]() -> Coroutine<void> {
     Fiber& current = co_await GetCurrentOmniFiber();
+    auto guard = boost::asio::make_work_guard(io.get_executor());
 
     // Consumer fiber
     auto consumer = current.Spawn("consumer", [&]() -> Coroutine<void> {
@@ -526,6 +527,7 @@ TEST(FiberTest, ThreadSafeExternalQueue) {
 
     co_await current.Join(consumer);
     producerThread.join();
+    guard.reset();
     co_return;
   });
 
