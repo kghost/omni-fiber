@@ -115,6 +115,7 @@ if(NOT OMNIFIBER_INTERNAL)
     Coroutine.hpp
     Event.hpp
     EventQueue.hpp
+    ExternalQueue.hpp
     Executor.hpp
     Fiber.hpp
     SharedAwaiter.hpp

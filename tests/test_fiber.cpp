@@ -16,6 +16,7 @@
 #include "Coroutine.hpp"
 #include "Event.hpp"
 #include "EventQueue.hpp"
+#include "ExternalQueue.hpp"
 #include "Fiber.hpp"
 #include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
@@ -491,3 +492,48 @@ TEST(FiberTest, FiberYieldLowPriority) {
   EXPECT_EQ(order[3], "child1_2");
   EXPECT_EQ(order[4], "child1_3");
 }
+
+// Test ExternalQueue thread-safe pushes from a separate thread
+TEST(FiberTest, ThreadSafeExternalQueue) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io.get_executor());
+  Manager manager(executor);
+
+  ExternalQueue<int> queue(io.get_executor());
+  std::vector<int> received;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentOmniFiber();
+
+    // Consumer fiber
+    auto consumer = current.Spawn("consumer", [&]() -> Coroutine<void> {
+      for (int i = 0; i < 3; ++i) {
+        co_await queue;
+        received.push_back(queue.PopFront());
+      }
+      co_return;
+    });
+
+    // Spawn a standard OS thread to push elements
+    std::thread producerThread([&]() -> void {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      queue.Push(100);
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      queue.Push(200);
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      queue.Push(300);
+    });
+
+    co_await current.Join(consumer);
+    producerThread.join();
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  ASSERT_EQ(received.size(), 3);
+  EXPECT_EQ(received[0], 100);
+  EXPECT_EQ(received[1], 200);
+  EXPECT_EQ(received[2], 300);
+}
+
