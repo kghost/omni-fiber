@@ -195,6 +195,12 @@ A cooperatively-blocking synchronous channel with a capacity of 1 element:
 - The consumer calls `co_await consumer` which suspends if the pipe is empty.
 - When read, the consumer receives a monad `std::expected<DataType, PipeClosed>`, allowing elegant propagation of closed/EOF states without exceptions.
 
+### `ExternalQueue<Element>`
+A thread-safe task/message queue designed to bridge external OS or GUI threads (such as Tauri IPC or ETW callback threads) to the cooperative fiber execution thread.
+- External threads push elements to the queue using `Push()`, which is synchronized internally using `std::mutex`.
+- Fibers cooperatively `co_await queue` to suspend and yield control if the queue is empty.
+- To prevent data races on the `SharedAwaiter` context storage (`_AwaitContext`) without introducing locks inside the single-threaded fiber scheduler, `ExternalQueue::Notify()` delegates execution to the fiber runner executor thread. All operations on `_AwaitContext` (e.g., calling `SharedAwaiter::Fire`) are posted to and executed within the executor thread, keeping the awaiter context entirely thread-confined.
+
 ### `Select`
 A cooperative I/O multiplexer (similar to `select` / `poll`) that awaits multiple primitives concurrently:
 - Accepts multiple `SelectPair(awaitable, callback)` objects.
