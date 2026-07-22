@@ -112,12 +112,14 @@ if(NOT OMNIFIBER_INTERNAL)
 
   install(FILES
     Asio.hpp
+    ConditionalVariable.hpp
     Coroutine.hpp
     Event.hpp
     EventQueue.hpp
     ExternalQueue.hpp
     Executor.hpp
     Fiber.hpp
+    Mutex.hpp
     SharedAwaiter.hpp
     FiberFinishNotifier.hpp
     GetCurrentOmniFiber.hpp
