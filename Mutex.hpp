@@ -2,15 +2,17 @@
 
 #include <cassert>
 #include <coroutine>
+#include <functional>
 #include <list>
+#include <memory>
 #include <optional>
 
 #include "AwaiterBase.hpp"
-#include "Fiber.hpp"
+#include "Coroutine.hpp"
 
 namespace Omni::Fiber {
 
-class ConditionalVariable;
+class LockGuard;
 
 class Mutex final {
 public:
@@ -22,79 +24,79 @@ public:
   Mutex(Mutex&&) = delete;
   auto operator=(Mutex&&) -> Mutex& = delete;
 
-  [[nodiscard]] auto IsLocked() const noexcept -> bool { return _Locked; }
+  [[nodiscard]] auto IsLocked() const noexcept -> bool { return _LockOwner.has_value(); }
 
-  class LockAwaiter : public AwaiterBase<FiberSuspender> {
+  auto Wait() -> Omni::Fiber::Coroutine<std::unique_ptr<class LockGuard>>;
+
+private:
+  void ScheduleNext();
+
+  class Awaiter : public AwaiterBase<FiberSuspender> {
   public:
-    explicit LockAwaiter(Mutex& mutex) : _Mutex(mutex) {}
-    ~LockAwaiter() {
-      if (this->IsSuspended() && _It.has_value()) {
-        if (!(*_It)->acquired) {
-          _Mutex._WaitList.erase(*_It);
-        }
-      }
-    }
+    explicit Awaiter(Mutex& mutex) : _Mutex(mutex), _It(_Mutex._WaitList.insert(_Mutex._WaitList.end(), *this)) {}
+    ~Awaiter() { _Mutex._WaitList.erase(*_It); }
 
-    LockAwaiter(const LockAwaiter&) = delete;
-    auto operator=(const LockAwaiter&) -> LockAwaiter& = delete;
-    LockAwaiter(LockAwaiter&&) = delete;
-    auto operator=(LockAwaiter&&) -> LockAwaiter& = delete;
+    Awaiter(const Awaiter&) = delete;
+    auto operator=(const Awaiter&) -> Awaiter& = delete;
+    Awaiter(Awaiter&& other) noexcept = delete;
+    auto operator=(Awaiter&&) -> Awaiter& = delete;
 
-    [[nodiscard]] auto await_ready() const noexcept -> bool {
-      if (_It.has_value() && (*_It)->acquired) {
-        return true;
-      }
-      if (!_Mutex._Locked) {
-        _Mutex._Locked = true;
-        return true;
-      }
-      return false;
-    }
+    [[nodiscard]] auto await_ready() const noexcept -> bool { return !_Mutex._LockOwner.has_value(); }
 
     template <typename PromiseType> void await_suspend(std::coroutine_handle<PromiseType> caller) {
       DoAwaitSuspend(caller);
-      OnAwaitSuspend();
     }
 
-    void OnAwaitSuspend() {
-      _It = _Mutex._WaitList.insert(_Mutex._WaitList.end(),
-                                     WaitNode{._Fiber = &this->GetOwnerPromise(), .acquired = false});
-    }
-
-    constexpr void await_resume() const noexcept {}
+    auto await_resume() const noexcept -> void {}
 
   private:
     Mutex& _Mutex;
-    struct WaitNode {
-      Fiber* _Fiber = nullptr;
-      bool acquired = false;
-    };
-    friend class Mutex;
-    friend class ConditionalVariable;
-    std::optional<typename std::list<WaitNode>::iterator> _It;
+    std::optional<typename std::list<std::reference_wrapper<Awaiter>>::iterator> _It;
   };
 
-  auto operator co_await() -> LockAwaiter { return LockAwaiter(*this); }
-  [[nodiscard]] auto Lock() -> LockAwaiter { return LockAwaiter(*this); }
+  friend class LockGuard;
+  friend class Awaiter;
 
-  void Unlock() {
-    assert(_Locked && "Unlocking a mutex that is not locked");
-    for (auto& node : _WaitList) {
-      if (!node.acquired) {
-        node.acquired = true;
-        node._Fiber->Schedule();
-        return;
-      }
-    }
-    _Locked = false;
+  std::optional<std::reference_wrapper<Omni::Fiber::LockGuard>> _LockOwner;
+  std::list<std::reference_wrapper<Awaiter>> _WaitList;
+};
+
+class LockGuard final {
+public:
+  explicit LockGuard(Mutex& mutex) noexcept : _Mutex(mutex) {
+    assert(!mutex._LockOwner.has_value() && "Locking a mutex that is already locked");
+    mutex._LockOwner = std::ref(*this);
   }
 
-private:
-  using WaitNode = LockAwaiter::WaitNode;
-  friend class ConditionalVariable;
+  ~LockGuard() {
+    assert(_Mutex._LockOwner.has_value() && std::addressof(_Mutex._LockOwner.value().get()) == this &&
+           "Unlocking a mutex that is not owned by this LockGuard");
+    _Mutex._LockOwner.reset();
+    _Mutex.ScheduleNext();
+  }
 
-  bool _Locked = false;
-  std::list<WaitNode> _WaitList;
+  LockGuard(const LockGuard&) = delete;
+  auto operator=(const LockGuard&) -> LockGuard& = delete;
+  LockGuard(LockGuard&& other) noexcept = delete;
+  auto operator=(LockGuard&& other) noexcept -> LockGuard& = delete;
+
+private:
+  Mutex& _Mutex;
 };
+
+inline auto Mutex::Wait() -> Omni::Fiber::Coroutine<std::unique_ptr<class LockGuard>> {
+  while (IsLocked()) {
+    co_await Awaiter(*this);
+  }
+  co_return std::make_unique<class LockGuard>(*this);
+}
+
+inline void Mutex::ScheduleNext() {
+  assert(!IsLocked());
+  if (_WaitList.empty()) {
+    return;
+  }
+  _WaitList.begin()->get().Schedule();
+}
 
 } // namespace Omni::Fiber

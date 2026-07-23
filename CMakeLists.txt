@@ -112,7 +112,6 @@ if(NOT OMNIFIBER_INTERNAL)
 
   install(FILES
     Asio.hpp
-    ConditionalVariable.hpp
     Coroutine.hpp
     Event.hpp
     EventQueue.hpp

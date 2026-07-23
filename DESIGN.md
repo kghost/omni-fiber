@@ -201,6 +201,12 @@ A thread-safe task/message queue designed to bridge external OS or GUI threads (
 - Fibers cooperatively `co_await queue` to suspend and yield control if the queue is empty.
 - To prevent data races on the `SharedAwaiter` context storage (`_AwaitContext`) without introducing locks inside the single-threaded fiber scheduler, `ExternalQueue::Notify()` delegates execution to the fiber runner executor thread. All operations on `_AwaitContext` (e.g., calling `SharedAwaiter::Fire`) are posted to and executed within the executor thread, keeping the awaiter context entirely thread-confined.
 
+### `Mutex`
+A cooperative mutual exclusion primitive designed for non-preemptive fiber coroutines:
+- **Lock Guard RAII (`LockGuard`)**: Enforces single-owner exclusive locking via an RAII guard. `_LockOwner` holds a reference to the active `LockGuard`.
+- **Cooperative Waiting (`Wait()`)**: Calling `co_await mutex.Wait()` enters a `while (IsLocked())` loop. If locked, the calling fiber suspends using an internal `Awaiter` registered in `_WaitList`.
+- **Fair Scheduling (`ScheduleNext()`)**: When `LockGuard` is destroyed, `_LockOwner` is reset and `ScheduleNext()` schedules the first waiting fiber at `_WaitList.begin()`, resuming it in FIFO order via the `Manager` ready queue.
+
 ### `Select`
 A cooperative I/O multiplexer (similar to `select` / `poll`) that awaits multiple primitives concurrently:
 - Accepts multiple `SelectPair(awaitable, callback)` objects.

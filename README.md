@@ -146,6 +146,20 @@ if (res.has_value()) {
 }
 ```
 
+#### `Mutex`
+A cooperative mutual exclusion primitive for non-preemptive fiber coroutines. `co_await mutex.Wait()` yields execution until the lock is acquired, returning a RAII `std::unique_ptr<LockGuard>`.
+```cpp
+#include <omnifiber/Mutex.hpp>
+
+Omni::Fiber::Mutex mutex;
+
+// Inside Fiber A or B
+{
+    std::unique_ptr<Omni::Fiber::LockGuard> guard = co_await mutex.Wait();
+    // Critical section guarded by LockGuard...
+} // Automatically unlocks and schedules next waiting fiber on destruction
+```
+
 #### `Select`
 Multiplexes multiple awaitables deriving from `AwaiterBase` (e.g., events, pipes).
 ```cpp

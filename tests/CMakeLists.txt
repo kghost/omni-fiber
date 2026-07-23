@@ -84,7 +84,7 @@ target_compile_options(omnifiber_test_remote_call PRIVATE -fsanitize=address)
 target_link_options(omnifiber_test_remote_call PRIVATE -fsanitize=address)
 gtest_discover_tests(omnifiber_test_remote_call)
 
-add_executable(omnifiber_test_mutex_cv test_mutex_cv.cpp)
+add_executable(omnifiber_test_mutex_cv test_mutex.cpp)
 target_link_libraries(omnifiber_test_mutex_cv PRIVATE omni-fiber-asan GTest::gtest_main Boost::log Boost::thread)
 target_compile_options(omnifiber_test_mutex_cv PRIVATE -fsanitize=address)
 target_link_options(omnifiber_test_mutex_cv PRIVATE -fsanitize=address)
