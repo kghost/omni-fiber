@@ -71,10 +71,16 @@ public:
     return front;
   }
 
+  void Clear() {
+    std::lock_guard<std::mutex> lock(_Mutex);
+    std::queue<Element> empty;
+    std::swap(_Queue, empty);
+  }
+
 private:
   void Notify() {
-    boost::asio::post(_Executor, [this]() -> void {
-      SharedAwaiter::Fire(_AwaitContext);
+    boost::asio::post(_Executor, [awaitContext = _AwaitContext]() mutable -> void {
+      SharedAwaiter::Fire(awaitContext);
     });
   }
 
