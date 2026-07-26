@@ -31,6 +31,7 @@ public:
   }
 
   auto operator co_await() -> AwaiterCustom<ExternalQueue<Element>, SharedAwaiter> {
+    std::lock_guard<std::mutex> lock(_Mutex);
     return AwaiterCustom<ExternalQueue<Element>, SharedAwaiter>(_AwaitContext, *this);
   }
 
@@ -79,14 +80,13 @@ public:
 
 private:
   void Notify() {
-    boost::asio::post(_Executor, [awaitContext = _AwaitContext]() mutable -> void {
-      SharedAwaiter::Fire(awaitContext);
-    });
+    std::lock_guard<std::mutex> lock(_Mutex);
+    boost::asio::post(_Executor, [awaitContext = _AwaitContext] mutable -> void { SharedAwaiter::Fire(awaitContext); });
   }
 
   mutable std::mutex _Mutex;
-  std::queue<Element> _Queue;
   boost::asio::any_io_executor _Executor;
+  std::queue<Element> _Queue;
   SharedAwaiter::ContextStorage _AwaitContext;
 };
 
