@@ -88,7 +88,7 @@ foreach(suffix "" "-asan")
 
   # Compiler specific options
   if(WIN32)
-    target_compile_options(${target} PRIVATE /W3 /Zc:preprocessor /Od)
+    target_compile_options(${target} PRIVATE /W3 /Zc:preprocessor)
   else()
     target_compile_options(${target} PRIVATE -Wall -fvisibility=hidden)
   endif()
