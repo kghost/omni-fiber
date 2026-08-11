@@ -45,6 +45,8 @@ Represents an independent cooperative unit of execution.
   ```
 - **Joining & Waiting**:
   - `co_await parent->Join(child)`: Waits for the specified child to finish and propagates its unhandled exceptions (wrapped in `FiberException`).
+  - `parent->TryJoin(child)`: Checks if the specified child has finished without yielding. Returns `true` if joined (and pops it, propagating exceptions), `false` otherwise.
+  - `parent->TryWait()`: Non-blocking check for any finished child. Pops and returns `std::optional<std::shared_ptr<Fiber>>` (or propagates exceptions) if a completed child exists, otherwise returns `std::nullopt`.
   - `co_await parent->WaitFor()`: Waits for the *first* child to finish and returns its `std::shared_ptr<Fiber>` pointer (or propagates its exception).
   - `co_await parent->WaitAll()`: Blocks until all active and completed child fibers are fully joined.
   - `co_await parent->Wait(until_callback)`: Yields the fiber until the boolean callback condition returns true.

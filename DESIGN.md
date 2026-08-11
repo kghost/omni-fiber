@@ -105,7 +105,9 @@ OmniFiber implements structured parent-child relationships between fibers to pre
 - **The Cooperative Wait Primitives**:
   - `Wait(until_callback)`: Cooperatively yields the active fiber using `co_await AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext)` in a loop until the boolean condition `until_callback()` is satisfied.
   - `Join(child)`: Waits until `_FinishedChildren` contains the targeted child fiber, erases it, and checks for exceptions. If the child failed, it propagates the error by throwing a `FiberException` wrapping the original exception.
-  - `WaitFor()`: Cooperatively yields until `_FinishedChildren` is not empty, pops the first completed child, checks for exceptions, and returns the `std::shared_ptr<Fiber>` child pointer.
+  - `TryJoin(child)`: Synchronously checks if `_FinishedChildren` contains the targeted child fiber. If present, erases it, checks for exceptions, and returns `true`; otherwise returns `false`.
+  - `TryWait()`: Synchronously checks if `_FinishedChildren` is not empty. If non-empty, pops the first completed child, checks for exceptions, and returns `std::optional<std::shared_ptr<Fiber>>`; otherwise returns `std::nullopt`.
+  - `WaitFor()`: Cooperatively yields until `_FinishedChildren` is not empty, pops the first completed child using `TryWait()`, and returns the `std::shared_ptr<Fiber>` child pointer.
   - `WaitAll()`: Loops `WaitFor()` until both `_Children` and `_FinishedChildren` are completely empty.
 
 ```mermaid

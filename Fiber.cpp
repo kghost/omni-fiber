@@ -63,16 +63,25 @@ auto Fiber::Join(const std::shared_ptr<Fiber>& child) -> Coroutine<void> {
   co_return;
 }
 
-auto Fiber::WaitFor() -> Coroutine<std::shared_ptr<Fiber>> {
-  assert(!_Children.empty() || !_FinishedChildren.empty());
-  co_await Wait([&] -> bool { return !_FinishedChildren.empty(); });
+auto Fiber::TryWait() -> std::optional<std::shared_ptr<Fiber>> {
+  if (_FinishedChildren.empty()) {
+    return std::nullopt;
+  }
   auto iterator = _FinishedChildren.begin();
   auto child = *iterator;
   _FinishedChildren.erase(iterator);
   if (child->_Exception.has_value()) {
     throw FiberException{._Fiber = child, ._InnerException = child->_Exception.value()};
   }
-  co_return child;
+  return child;
+}
+
+auto Fiber::WaitFor() -> Coroutine<std::shared_ptr<Fiber>> {
+  assert(!_Children.empty() || !_FinishedChildren.empty());
+  co_await Wait([&] -> bool { return !_FinishedChildren.empty(); });
+  auto child = TryWait();
+  assert(child.has_value());
+  co_return *child;
 }
 
 auto Fiber::WaitAll() -> Coroutine<void> {

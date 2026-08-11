@@ -132,6 +132,7 @@ public:
   auto Wait(std::function<bool()> until) -> Coroutine<void>;
   auto TryJoin(const std::shared_ptr<Fiber>& child) -> bool;
   auto Join(const std::shared_ptr<Fiber>& child) -> Coroutine<void>;
+  auto TryWait() -> std::optional<std::shared_ptr<Fiber>>;
   auto WaitFor() -> Coroutine<std::shared_ptr<Fiber>>;
   auto WaitAll() -> Coroutine<void>;
 

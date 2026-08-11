@@ -1,6 +1,5 @@
 #include <boost/asio.hpp>
 #include <gtest/gtest.h>
-#include <memory>
 #include <string>
 
 #include "Asio.hpp"
@@ -9,6 +8,7 @@
 #include "FiberException.hpp"
 #include "GetCurrentOmniFiber.hpp"
 #include "Manager.hpp"
+#include "OmniYield.hpp"
 
 using namespace Omni::Fiber;
 
@@ -272,4 +272,45 @@ TEST(FiberExceptionTest, CaughtExceptionDoesNotPropagate) {
 
   EXPECT_TRUE(exceptionCaught);
   EXPECT_TRUE(parentCompleted);
+}
+
+// 7. Test that child fiber exception propagates to parent fiber.TryWait
+TEST(FiberExceptionTest, ChildExceptionPropagatesToTryWait) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io.get_executor());
+  Manager manager(executor);
+
+  bool exceptionCaught = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentOmniFiber();
+
+    auto child = current.Spawn("child", [&]() -> Coroutine<void> {
+      throw std::runtime_error("Test exception in child for TryWait");
+      co_return;
+    });
+
+    co_await OmniYield();
+
+    try {
+      (void)current.TryWait();
+    } catch (const FiberException& e) {
+      exceptionCaught = true;
+      EXPECT_EQ(e._Fiber, child);
+      try {
+        std::rethrow_exception(e._InnerException);
+      } catch (const std::runtime_error& inner) {
+        EXPECT_STREQ(inner.what(), "Test exception in child for TryWait");
+      } catch (...) {
+        EXPECT_TRUE(false) << "Unexpected inner exception type";
+      }
+    } catch (...) {
+      EXPECT_TRUE(false) << "Expected FiberException";
+    }
+
+    co_return;
+  });
+
+  RunEventLoop(io);
+  EXPECT_TRUE(exceptionCaught);
 }

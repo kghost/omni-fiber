@@ -539,3 +539,46 @@ TEST(FiberTest, ThreadSafeExternalQueue) {
   EXPECT_EQ(received[2], 300);
 }
 
+// Test Fiber TryWait non-blocking check
+TEST(FiberTest, FiberTryWait) {
+  boost::asio::io_context io;
+  AsioExecutor executor(io.get_executor());
+  Manager manager(executor);
+
+  bool childRan = false;
+
+  manager.SpawnRoot("root", [&]() -> Coroutine<void> {
+    Fiber& current = co_await GetCurrentOmniFiber();
+
+    // When no finished children exist
+    EXPECT_FALSE(current.TryWait().has_value());
+
+    auto child = current.Spawn("child", [&]() -> Coroutine<void> {
+      childRan = true;
+      co_return;
+    });
+
+    // Before child runs/finishes, TryWait returns nullopt
+    EXPECT_FALSE(current.TryWait().has_value());
+
+    // Yield to let child run to completion
+    co_await OmniYield();
+
+    // Now child should be finished and TryWait should return the child fiber
+    auto finishedChild = current.TryWait();
+    EXPECT_TRUE(finishedChild.has_value());
+    if (finishedChild.has_value()) {
+      EXPECT_EQ(finishedChild.value(), child);
+    }
+
+    // After popping, TryWait returns nullopt again
+    EXPECT_FALSE(current.TryWait().has_value());
+
+    co_return;
+  });
+
+  RunEventLoop(io);
+
+  EXPECT_TRUE(childRan);
+}
+
