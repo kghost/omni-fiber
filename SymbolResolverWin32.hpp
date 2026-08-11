@@ -29,7 +29,9 @@ public:
 #endif
 
 private:
+#if defined(_WIN32)
   bool _DbgHelpInitialized = false;
+#endif
 };
 
 } // namespace Omni::Fiber
