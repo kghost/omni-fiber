@@ -13,7 +13,7 @@
 #include <boost/log/common.hpp>
 #include <boost/log/trivial.hpp>
 
-#include "AwaiterAlwaysSuspend.hpp"
+#include "AwaiterCustom.hpp"
 #include "Coroutine.hpp"
 #include "FiberFinishNotifier.hpp"
 #include "FiberPromise.hpp"
@@ -128,7 +128,25 @@ public:
   auto IsFinished() -> bool { return _State == State::Finished; }
   void Schedule();
 
-  auto ChildAwaitor() -> AwaiterAlwaysSuspend<SharedAwaiter>;
+  class ChildAwaiter final {
+  public:
+    explicit ChildAwaiter(Fiber& owner) : _Owner(owner) {}
+    ~ChildAwaiter() = default;
+
+    ChildAwaiter(const ChildAwaiter&) = delete;
+    auto operator=(const ChildAwaiter&) -> ChildAwaiter& = delete;
+    ChildAwaiter(ChildAwaiter&&) = delete;
+    auto operator=(ChildAwaiter&&) -> ChildAwaiter& = delete;
+
+    auto operator co_await() && { return AwaiterCustom<ChildAwaiter, SharedAwaiter>(_Owner._JoinAwaitContext, *this); }
+    [[nodiscard]] static constexpr auto AwaitReady() noexcept -> bool { return false; }
+    void AwaitValue() {}
+
+  private:
+    Fiber& _Owner;
+  };
+
+  auto ChildAwaitor() -> ChildAwaiter;
   auto Wait(std::function<bool()> until) -> Coroutine<void>;
   auto TryJoin(const std::shared_ptr<Fiber>& child) -> bool;
   auto Join(const std::shared_ptr<Fiber>& child) -> Coroutine<void>;
@@ -194,6 +212,7 @@ private:
   void Finishing();
   void SetException(const std::exception_ptr& eptr);
   void OnChildFinished(Fiber& child);
+  [[nodiscard]] auto HasFinishedChild() const -> bool { return !_FinishedChildren.empty(); }
 
   Manager& _Manager;
   const std::string _Name;

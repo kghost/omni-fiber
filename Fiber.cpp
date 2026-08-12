@@ -9,7 +9,6 @@
 #include <optional>
 #include <utility>
 
-#include "AwaiterAlwaysSuspend.hpp"
 #include "Coroutine.hpp"
 #include "FiberException.hpp"
 #include "GetCurrentOmniFiber.hpp"
@@ -31,9 +30,7 @@ void Fiber::OnChildFinished(Fiber& child) {
   SharedAwaiter::Fire(_JoinAwaitContext);
 }
 
-auto Fiber::ChildAwaitor() -> AwaiterAlwaysSuspend<SharedAwaiter> {
-  return AwaiterAlwaysSuspend<SharedAwaiter>(_JoinAwaitContext);
-}
+auto Fiber::ChildAwaitor() -> ChildAwaiter { return ChildAwaiter(*this); }
 
 auto Fiber::Wait(std::function<bool()> until) -> Coroutine<void> {
   assert(&co_await GetCurrentOmniFiber() == this);
