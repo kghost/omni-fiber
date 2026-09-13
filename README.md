@@ -95,7 +95,7 @@ The flagship integration feature. Pass `Omni::Fiber::AsioUseFiber` as the comple
 
   // Wait for 1 second cooperatively inside a fiber without blocking the thread
   boost::asio::steady_timer timer(io_context, std::chrono::seconds(1));
-  std::tuple<boost::system::error_code> res = co_await timer.async_wait(Omni::Fiber::AsioUseFiber);
+  std::tuple<std::error_code> res = co_await timer.async_wait(Omni::Fiber::AsioUseFiber);
   ```
 
 ### 6. Synchronization & Multiplexing Primitives

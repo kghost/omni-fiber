@@ -1,6 +1,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <utility>
 
 #include <boost/asio.hpp>
@@ -23,10 +24,10 @@ void RunEventLoop(boost::asio::io_context& io) {
 
 template <typename CompletionToken>
 auto AsyncCustomOp(boost::asio::any_io_executor executor, int x, const std::string& y, CompletionToken&& token) {
-  return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, int, std::string)>(
+  return boost::asio::async_initiate<CompletionToken, void(std::error_code, int, std::string)>(
       [](auto&& handler, boost::asio::any_io_executor executor, int x, std::string y) -> auto {
         boost::asio::post(executor, [handler = std::move(handler), x, y = std::move(y)]() mutable -> auto {
-          handler(boost::system::error_code{}, x * 2, y + "_suffix");
+          handler(std::error_code{}, x * 2, y + "_suffix");
         });
       },
       token, std::ref(executor), x, y);
